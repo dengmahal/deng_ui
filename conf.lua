@@ -3,7 +3,7 @@ function love.conf(t)
     t.vsync=false
 
     t.identity = "uitest"                    -- The name of the save directory (string)
-    t.version = "11.5.0"                -- The LÖVE version this game was made for (string)
+    t.version = "12.0.0"                -- The LÖVE version this game was made for (string)
     t.accelerometerjoystick = true      -- Enable the accelerometer on iOS and Android by exposing it as a Joystick (boolean)
     t.gammacorrect = false              -- Enable gamma-correct rendering, when supported by the system (boolean)
 
@@ -18,8 +18,9 @@ function love.conf(t)
     t.window.fullscreen = false         -- Enable fullscreen (boolean)
     t.window.fullscreentype = "desktop" -- Choose between "desktop" fullscreen or "exclusive" fullscreen mode (string)
     t.window.msaa = 0                   -- The number of samples to use with multi-sampled antialiasing (number)
-    t.window.display = 1                -- Index of the monitor to show the window in (number)
-    t.window.highdpi = false            -- Enable high-dpi mode for the window on a Retina display (boolean)
+    t.displayindex=1
+    --t.window.display = 1                -- Index of the monitor to show the window in (number)
+    --t.window.highdpi = false            -- Enable high-dpi mode for the window on a Retina display (boolean)
     t.window.x = nil                    -- The x-coordinate of the window's position in the specified display (number)
     t.window.y = nil                    -- The y-coordinate of the window's position in the specified display (number)
 
