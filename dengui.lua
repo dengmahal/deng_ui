@@ -56,7 +56,9 @@ function qsort.dup(tab)
         return tab
     end
 end
-
+local function nofunc()
+    print("button has no function. if its not supposed to have a function, it shouldnt be a button.")
+end
 
 local dengui={}
 local utf8=require("utf8")
@@ -145,6 +147,23 @@ local defaults={
         font="",                ---img
         background_text="vergessen2",
         limit=100,
+    },
+    text_button={
+        type="text_button",
+        position={scale={x=0,y=0},offset={x=0,y=0}},
+        size={scale={x=0,y=0},offset={x=100,y=50}},
+        scale={x=1,y=1},
+        anchor={x=0,y=0},
+        zindex=0,
+        border_width=20,
+        colour={.1,0.1,.1,1},
+        border_colour={.9,.9,.9,1},
+        background_colour={1,1,1,1},
+        text="vergessen",
+        alignmode="center",
+        rotation=0,
+        font="",
+        func=nofunc,
     },
 }
 --love.graphics.setBlendMode( "alpha", "alphamultiply" )
@@ -279,11 +298,11 @@ end
 function dengui.new_textfb(canvas_id,text,position,size,scale,colour)
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
     local gen=firstlayercopy(defaults.textfb)
-    gen.position=position or defaults.textf.position
-    gen.scale=scale or defaults.textf.scale
-    gen.size=size or defaults.textf.size
-    gen.colour=colour or defaults.textf.colour
-    gen.text=text or defaults.textf.text
+    gen.position=position or defaults.textfb.position
+    gen.scale=scale or defaults.textfb.scale
+    gen.size=size or defaults.textfb.size
+    gen.colour=colour or defaults.textfb.colour
+    gen.text=text or defaults.textfb.text
     ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=gen
     ui_storage[canvas_id][0]=#ui_storage[canvas_id]
     --dengui.re_render_canvas(canvas_id)
@@ -310,11 +329,11 @@ function dengui.new_text_edit(canvas_id,background_text,position,size,scale,colo
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
     local gen=firstlayercopy(defaults.text_edit)
     gen.type="text_edit"
-    gen.position=position or defaults.textf.position
-    gen.scale=scale or defaults.textf.scale
-    gen.size=size or defaults.textf.size
-    gen.colour=colour or defaults.textf.colour
-    gen.background_text=background_text or defaults.textf.background_text
+    gen.position=position or defaults.text_edit.position
+    gen.scale=scale or defaults.text_edit.scale
+    gen.size=size or defaults.text_edit.size
+    gen.colour=colour or defaults.text_edit.colour
+    gen.background_text=background_text or defaults.text_edit.background_text
     ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=gen
     ui_storage[canvas_id][0]=#ui_storage[canvas_id]
     --dengui.re_render_canvas(canvas_id)
@@ -341,7 +360,7 @@ local function render_text_edit(canvas_id,obj)
     lg.rectangle("line", px, py, sx, sy)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     local todisplay=""
-    if obj.text=="" or nil then
+    if (obj.text=="" or obj.text==nil) and current_text_editing[1]==0 then
         todisplay=defaults.text_edit.background_text
     else
         todisplay=text_to_render
@@ -349,6 +368,37 @@ local function render_text_edit(canvas_id,obj)
     lg.printf(todisplay, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
+function dengui.new_text_button(canvas_id,text,position,size,func,scale,colour)
+    if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
+    local gen=firstlayercopy(defaults.text_button)
+    gen.position=position or defaults.text_button.position
+    gen.scale=scale or defaults.text_button.scale
+    gen.size=size or defaults.text_button.size
+    gen.colour=colour or defaults.text_button.colour
+    gen.text=text or defaults.text_button.text
+    gen.func=func or defaults.text_button.func
+    ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=gen
+    ui_storage[canvas_id][0]=#ui_storage[canvas_id]
+    --dengui.re_render_canvas(canvas_id)
+    return gen
+end
+local function render_text_button(canvas_id,obj)
+    local thiscan=canvases[canvas_id]
+    --local thisfont=lg.getFont()
+    local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
+    local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
+    local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    lg.setColor(obj.background_colour[1],obj.background_colour[2],obj.background_colour[3],obj.background_colour[4])
+    lg.rectangle("fill", px, py, sx, sy)
+    lg.setLineWidth(obj.border_width)
+    lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
+    lg.rectangle("line", px, py, sx, sy)
+    lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
+    lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+end
+
 
 local render_function_list={
     ["box"]=render_box,
@@ -356,6 +406,7 @@ local render_function_list={
     ["textf"]=render_textf,
     ["textfb"]=render_textfb,
     ["text_edit"]=render_text_edit,
+    ["text_button"]=render_text_button,
 }
 function dengui.re_render_all()
     for i=1,canvases[0] do
@@ -469,6 +520,11 @@ function dengui.mousepressed(x, y, button, isTouch)
         end
     end
     if hit_text_eedit==false then
+        if current_text_editing[1]~=0 then
+            local tmp=tonumber(current_text_editing[1])
+            current_text_editing={0,0}
+            dengui.re_render_canvas(tmp)
+        end
         current_text_editing={0,0}
     end
 end
@@ -478,5 +534,7 @@ end
 function dengui.mousemoved(x,y,dx,dy)
 
 end
+function dengui.wheelmoved(x,y)
 
+end
 return dengui

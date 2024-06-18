@@ -1,7 +1,7 @@
 local dengui=require("dengui")
 print(love.getVersion())
 local mytext
-function love.load()
+function love.load(arg,arg2)
     local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
     local maincanvas_id=dengui.new_canvas(screenX,screenY)
     print(maincanvas_id)
@@ -35,6 +35,16 @@ function love.load()
     mytext_edit.position={scale={x=0.2,y=0.2},offset={x=0,y=0}}
     mytext_edit.zindex=2
 
+    local mytext_button=dengui.new_text_button(maincanvas_id,"enter shit here")
+    mytext_button.alignmode="center"
+    mytext_button.scale={x=1,y=1}
+    mytext_button.colour={0,0,0,1}
+    mytext_button.background_colour={1,1,1,1}
+    mytext_button.border_colour={0,0,1,0.2}
+    mytext_button.size={scale={x=0,y=0},offset={x=100,y=100}}
+    mytext_button.position={scale={x=0.7,y=0.7},offset={x=0,y=0}}
+    mytext_button.zindex=2
+
     dengui.re_render_all()
     dengui.msgbox("loaded","/TIME:1")
     dengui.re_render_all()
@@ -60,6 +70,9 @@ end
 function love.mousemoved(x,y,dx,dy)
     dengui.mousemoved(x,y,dx,dy)
 end
+function love.wheelmoved(x,y)
+    dengui.wheelmoved(x,y)
+end
 local dt_list_len=1000
 local dt_list={}
 for i=1,dt_list_len do
@@ -74,7 +87,6 @@ function love.draw(dt)
     dt_list=ndtlist
     if mytext then
        -- mytext.size={scale={x=0,y=0},offset={x=100,y=i/10}}
-        
        --dengui.re_render_all()
     end
 
@@ -99,8 +111,6 @@ function love.run()
     -- We don't want the first frame's dt to include time taken by love.load.
     if love.timer then love.timer.step() end
 
-    local lag = 0.0
-    local previus_updt=love.timer.getTime() 
     -- Main loop time.
     return function()
 
