@@ -3,25 +3,26 @@ print(love.getVersion())
 local mytext
 function love.load(arg,arg2)
     local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
-    local maincanvas_id=dengui.new_canvas(screenX,screenY)
+    local maincanvas_id=dengui.new_canvas(screenX,screenY,1,true,1)
+    local secondcanvas_id=dengui.new_canvas(screenX,screenY,1,true,1)
     print(maincanvas_id)
     local mybox=dengui.new_box(maincanvas_id,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{scale={x=0.1,y=0.1},offset={x=0,y=0}},{1,1,1,1})
     mybox.anchor={x=0.5,y=0.5}
     mybox.colour={1,0,1,1}
-    mybox.size={scale={x=0,y=0},offset={x=100,y=100}}
+    mybox.size={scale={x=.9,y=.9},offset={x=0,y=0}}
     mybox.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
-    mybox.zindex=2
+    mybox.zindex=-6
     --dengui.re_render_canvas(maincanvas_id)
     mytext=dengui.new_textfb(maincanvas_id,"text")
     mytext.scale={x=1,y=1}
     mytext.colour={1,1,0,1}
     mytext.background_colour={1,0,0,1}
     mytext.border_colour={0,0,1,0.2}
-    mytext.size={scale={x=0,y=0},offset={x=100,y=100}}
+    mytext.size={scale={x=0.05,y=0.05},offset={x=0,y=0}}
     mytext.text=" tes"
     mytext.position={scale={x=0.2,y=0},offset={x=0,y=0}}
     mytext.zindex=3
-    for i=1,1000 do
+    for i=1,100 do
         local a=dengui.new_box(maincanvas_id,{scale={x=0.5,y=0.5},offset={x=0,y=50}},{scale={x=0.1,y=0.4},offset={x=0,y=0}},{0,1,0,0.5})
         a.zindex=-5
     end
@@ -31,7 +32,7 @@ function love.load(arg,arg2)
     mytext_edit.colour={0,0,0,1}
     mytext_edit.background_colour={1,1,1,1}
     mytext_edit.border_colour={0,0,1,0.2}
-    mytext_edit.size={scale={x=0,y=0},offset={x=100,y=100}}
+    mytext_edit.size={scale={x=0.1,y=0.1},offset={x=0,y=0}}
     mytext_edit.position={scale={x=0.2,y=0.2},offset={x=0,y=0}}
     mytext_edit.zindex=2
 
@@ -41,9 +42,16 @@ function love.load(arg,arg2)
     mytext_button.colour={0,0,0,1}
     mytext_button.background_colour={1,1,1,1}
     mytext_button.border_colour={0,0,1,0.2}
-    mytext_button.size={scale={x=0,y=0},offset={x=100,y=100}}
+    mytext_button.size={scale={x=0.1,y=0.1},offset={x=0,y=0}}
     mytext_button.position={scale={x=0.7,y=0.7},offset={x=0,y=0}}
     mytext_button.zindex=2
+    local my_image=dengui.new_image(maincanvas_id,"snekobread.png")
+    my_image.colour={0,0,0,1}
+    my_image.size={scale={x=0.1,y=0.1},offset={x=0,y=0}}
+    my_image.position={scale={x=0.9,y=0.4},offset={x=0,y=0}}
+    my_image.zindex=2
+
+
 
     dengui.re_render_all()
     dengui.msgbox("loaded","/TIME:1")

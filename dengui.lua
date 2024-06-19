@@ -3,6 +3,7 @@ function qsort.swap(tab, firstindex,secondindex)
     local temp=tab[firstindex]
     tab[firstindex]=tab[secondindex]
     tab[secondindex]=temp
+    --temp=nil
 end
 function qsort.partition(tab,left,right)
     local pivv=tab[right]
@@ -14,6 +15,9 @@ function qsort.partition(tab,left,right)
         end
     end
     qsort.swap(tab, right, partitionindex)
+    --tab=nil
+    --pivv=nil
+    --left=nil
     return partitionindex
 end
 function qsort.quicksort(tab,left,right)
@@ -25,6 +29,9 @@ function qsort.quicksort(tab,left,right)
     local pivi=qsort.partition(tab,left,right)
     qsort.quicksort(tab,left,pivi-1)
     qsort.quicksort(tab,pivi+1,right)
+    --left=nil
+    --right=nil
+    --pivi=nil
     return tab
 end
 function qsort.dup(tab)
@@ -51,13 +58,16 @@ function qsort.dup(tab)
             end
         end
         ntab[0]=#ntab
+        --counts=nil
+        --exists=nil
+        --storage=nil
         return ntab
     else
         return tab
     end
 end
-local function nofunc()
-    print("button has no function. if its not supposed to have a function, it shouldnt be a button.")
+local function nofunc(button)
+    print("button has no "..button.." function. if its not supposed to have a function, it shouldnt be a button.")
 end
 
 local dengui={}
@@ -147,6 +157,7 @@ local defaults={
         font="",                ---img
         background_text="vergessen2",
         limit=100,
+        enabled=true,
     },
     text_button={
         type="text_button",
@@ -163,7 +174,24 @@ local defaults={
         alignmode="center",
         rotation=0,
         font="",
-        func=nofunc,
+        left_func=nofunc,
+        right_func=nofunc,
+        middle_func=nofunc,
+        enabled=true,
+    },
+    image={
+        type="image",
+        position={scale={x=0,y=0},offset={x=0,y=0}},
+        size={scale={x=0,y=0},offset={x=0,y=0}},
+        anchor={x=0,y=0},
+        zindex=0,
+        colour={1,1,1,1},
+        image="",
+        settings={
+            mipmaps=false,
+            linear=false,
+            dpiscale=1,
+        }
     },
 }
 --love.graphics.setBlendMode( "alpha", "alphamultiply" )
@@ -173,19 +201,49 @@ print(standart_font)
 local function zsort(a,b)
     return a.zindex<b.zindex
 end
-function dengui.new_canvas(sx,sy,zindex)
+function dengui.new_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position)
+    do_aspect=do_aspect or false
+    aspect_ratio=aspect_ratio or sx/sy
     zindex=zindex or 0
-    canvases[#canvases+1] = {canvas=lg.newCanvas(sx,sy),x=sx,y=sy,zindex=zindex}
+    canvas_position=canvas_position or {scale={x=0.5,y=0.5},offset={x=0,y=0}}
+    if do_aspect==true then
+        if sx/sy>= aspect_ratio then
+            sx=sy/aspect_ratio
+        else
+            sy=sx*aspect_ratio
+        end
+    end
+    local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
+    canvases[#canvases+1] = {canvas=lg.newCanvas(sx,sy),x=sx,y=sy,zindex=zindex,do_aspect=do_aspect,aspect_ratio=aspect_ratio,position=canvas_position}
     canvases[0]=#canvases
     ui_storage[canvases[0]]={[0]=0}
+    local px=canvas_position.scale.x*screenX+canvas_position.offset.x   -sx*0.5
+    local py=canvas_position.scale.y*screenY+canvas_position.offset.y   -sy*0.5
+    canvases[canvases[0]].truepos={x=px,y=py}
     canvases=qsort.dup(canvases)
     ---table.sort(canvases,zsort)
+    print(canvases[canvases[0]].do_aspect)
     return canvases[0]
 end
 function dengui.set_size(canvas_id,x,y)
     --reconstruct canvas here
     if canvases[canvas_id] then
-        canvases[canvas_id]={canvas=lg.newCanvas(x,y),x=x,y=y}
+        canvases[canvas_id].canvas:release()
+        if canvases[canvas_id].do_aspect==true then
+            if x/y>= canvases[canvas_id].aspect_ratio then
+                x=y/canvases[canvas_id].aspect_ratio
+            else
+                y=x*canvases[canvas_id].aspect_ratio
+            end
+        end
+        local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
+        canvases[canvas_id].canvas=lg.newCanvas(x,y)
+        canvases[canvas_id].x=x
+        canvases[canvas_id].y=y
+        local px=canvases[canvas_id].position.scale.x*screenX+canvases[canvas_id].position.offset.x   -x*0.5
+        local py=canvases[canvas_id].position.scale.y*screenY+canvases[canvas_id].position.offset.y   -y*0.5
+        canvases[canvas_id].truepos={x=px,y=py}
+        --canvases[canvas_id]={canvas=lg.newCanvas(x,y),x=x,y=y,canvases[canvas_id].zindex,do_aspect=canvases[canvas_id].do_aspect,aspect_ratio=canvases[canvas_id].aspect_ratio,position=canvases[canvas_id].position}
     else
         warn("canvas_id '"..canvas_id.."' not found")
     end
@@ -196,7 +254,7 @@ function dengui.set_size_all(x,y)
     --reconstruct canvas here
     for canvas_id=1,canvases[0] do
         if canvases[canvas_id] then
-            canvases[canvas_id]={canvas=lg.newCanvas(x,y),x=x,y=y}
+            dengui.set_size(canvas_id,x,y)
         else
             warn("canvas_id '"..canvas_id.."' not found")
         end
@@ -207,8 +265,14 @@ end
 local cursor_timer=os.clock()
 local cursor_state=false
 function dengui.draw()
+    local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
     for i=1,canvases[0] do
-        lg.draw(canvases[i].canvas)
+        local canv=canvases[i]
+        local sx=canv.x
+        local sy=canv.y
+        local px=canv.position.scale.x*screenX+canv.position.offset.x   -sx*0.5
+        local py=canv.position.scale.y*screenY+canv.position.offset.y   -sy*0.5
+        lg.draw(canvases[i].canvas,px,py)
     end
     if cursor_timer<os.clock()-1 and current_text_editing[1]~=0 then
         cursor_timer=os.clock()
@@ -399,6 +463,31 @@ local function render_text_button(canvas_id,obj)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 
+function dengui.new_image(canvas_id,file,position,scale,colour)
+    if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
+    local gen=firstlayercopy(defaults.image)
+    gen.position=position or defaults.image.position
+    gen.scale=scale or defaults.image.scale
+    gen.colour=colour or defaults.image.colour
+    gen.file=file or defaults.image.file
+    ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=gen
+    ui_storage[canvas_id][0]=#ui_storage[canvas_id]
+    --dengui.re_render_canvas(canvas_id)
+    return gen
+end
+local function render_image(canvas_id,obj)
+    local thiscan=canvases[canvas_id]
+    local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
+    local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
+    local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
+    local img=love.graphics.newImage(obj.file,obj.settings)
+    print(img)
+    love.draw(img)-- (obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+end
+
 
 local render_function_list={
     ["box"]=render_box,
@@ -407,12 +496,14 @@ local render_function_list={
     ["textfb"]=render_textfb,
     ["text_edit"]=render_text_edit,
     ["text_button"]=render_text_button,
+    ["image"]=render_image,
 }
 function dengui.re_render_all()
     for i=1,canvases[0] do
         dengui.re_render_canvas(i)
     end
 end
+local last_gc=os.clock()
 function dengui.re_render_canvas(canvas_id)
     lg.setCanvas(canvases[canvas_id].canvas)
     lg.clear()
@@ -423,8 +514,17 @@ function dengui.re_render_canvas(canvas_id)
 ---@diagnostic disable-next-line: param-type-mismatch
     ui_storage[canvas_id]=qsort.dup(ui_storage[canvas_id])
     lg.setCanvas()
+    if os.clock()-last_gc>math.max(math.min((1/ui_storage[canvas_id][0])*600000,60),3) then
+        collectgarbage("collect")--> there is a memory leak somewhere. removing the sort makes it better, but making all variables nil after sorting doesnt help????
+        last_gc=os.clock()
+        print("collected")
+    end
 end
 
+
+function dengui.give_canvasobj(canvas_id)
+    return canvases[canvas_id].canvas
+end
 
 
 local str_char_map={
@@ -501,20 +601,42 @@ end
 function dengui.keyreleased(key)
 
 end
+function dengui.is_over_ui(canvas_id,ui_id,x,y)
+    local thiscan=canvases[canvas_id]
+    local obj=ui_storage[canvas_id][ui_id]
+    local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
+    local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
+    local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+
+    local tx=px+thiscan.truepos.x
+    local ty=py+thiscan.truepos.y
+    if x>=tx and x<=tx+sx and y>=ty and y<=ty+sy then
+        return true
+    else
+        return false
+    end
+end
+
 function dengui.mousepressed(x, y, button, isTouch)
     local hit_text_eedit=false
     for i=1,canvases[0] do
         local thiscan=canvases[i]
         for ii=1,#ui_storage[i] do
             if ui_storage[i][ii].type=="text_edit" then
-                local obj=ui_storage[i][ii]
-                local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
-                local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
-                local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
-                local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
-                if x>=px and x<=px+sx and y>=py and y<=py+sy then
+                if dengui.is_over_ui(i,ii,x,y)==true then
                     current_text_editing={i,ii}
                     hit_text_eedit=true
+                end
+            elseif ui_storage[i][ii].type=="text_button" then
+                if dengui.is_over_ui(i,ii,x,y)==true then
+                    if button==1 then
+                        ui_storage[i][ii].left_func("left",x,y)
+                    elseif button==2 then
+                        ui_storage[i][ii].right_func("right",x,y)
+                    elseif button==3 then
+                        ui_storage[i][ii].middle_func("middle",x,y)
+                    end
                 end
             end
         end
