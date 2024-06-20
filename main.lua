@@ -12,7 +12,7 @@ function love.load(arg,arg2)
     mybox.size={scale={x=.9,y=.9},offset={x=0,y=0}}
     mybox.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
     mybox.zindex=-6
-    --dengui.re_render_canvas(maincanvas_id)
+    dengui.re_render_canvas(maincanvas_id)
     mytext=dengui.new_textfb(maincanvas_id,"text")
     mytext.scale={x=1,y=1}
     mytext.colour={1,1,0,1}
@@ -24,7 +24,7 @@ function love.load(arg,arg2)
     mytext.zindex=3
     for i=1,100 do
         local a=dengui.new_box(maincanvas_id,{scale={x=0.5,y=0.5},offset={x=0,y=50}},{scale={x=0.1,y=0.4},offset={x=0,y=0}},{0,1,0,0.5})
-        a.zindex=-5
+        a.zindex=-50
     end
     local mytext_edit=dengui.new_text_edit(maincanvas_id,"enter shit here")
     mytext_edit.alignmode="center"
@@ -45,17 +45,17 @@ function love.load(arg,arg2)
     mytext_button.size={scale={x=0.1,y=0.1},offset={x=0,y=0}}
     mytext_button.position={scale={x=0.7,y=0.7},offset={x=0,y=0}}
     mytext_button.zindex=2
-    local my_image=dengui.new_image(maincanvas_id,"snekobread.png")
-    my_image.colour={0,0,0,1}
-    my_image.size={scale={x=0.1,y=0.1},offset={x=0,y=0}}
-    my_image.position={scale={x=0.9,y=0.4},offset={x=0,y=0}}
-    my_image.zindex=2
 
-
-
+    dengui.new_img_asset("snekobread.png","snekobread")
+    local my_image=dengui.new_image(maincanvas_id,"snekobread")
+    my_image.colour={1,1,1,1}
+    my_image.size={scale={x=0.5,y=0.5},offset={x=0,y=0}}
+    my_image.position={scale={x=0.1,y=0.4},offset={x=0,y=0}}
+    my_image.zindex=-4
     dengui.re_render_all()
     dengui.msgbox("loaded","/TIME:1")
     dengui.re_render_all()
+    --dengui.release_img_asset("snekobread")
 end
 function love.resize(w, h)
     dengui.set_size_all(w,h)
@@ -85,6 +85,9 @@ local dt_list_len=1000
 local dt_list={}
 for i=1,dt_list_len do
     dt_list[i]=1
+end
+function love.textedited( text, start, length )
+    --print("ed",text,start,length)
 end
 function love.draw(dt)
     local ndtlist={}

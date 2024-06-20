@@ -66,8 +66,12 @@ function qsort.dup(tab)
         return tab
     end
 end
+local function string_insert(str1, str2, pos)
+    return str1:sub(1,pos)..str2..str1:sub(pos+1)
+end
+
 local function nofunc(button)
-    print("button has no "..button.." function. if its not supposed to have a function, it shouldnt be a button.")
+    --print("button has no "..button.." function. if its not supposed to have a function, it shouldnt be a button.")
 end
 
 local dengui={}
@@ -76,6 +80,8 @@ local ui_storage={[0]=0}
 local canvases={}
 local canvases_to_refresh={}
 local current_text_editing={0,0}
+local cursor_pos=0
+local assets={}
 local function warn(message)
     local time = os.date("%Y-%m-%d %H:%M:%S")
     io.stderr:write(string.format("[%s] Warning: %s\n", time, message))
@@ -174,9 +180,9 @@ local defaults={
         alignmode="center",
         rotation=0,
         font="",
-        left_func=nofunc,
-        right_func=nofunc,
-        middle_func=nofunc,
+        ["1_func"]=nofunc,
+        ["2_func"]=nofunc,
+        ["3_func"]=nofunc,
         enabled=true,
     },
     image={
@@ -186,12 +192,8 @@ local defaults={
         anchor={x=0,y=0},
         zindex=0,
         colour={1,1,1,1},
-        image="",
-        settings={
-            mipmaps=false,
-            linear=false,
-            dpiscale=1,
-        }
+        asset="",
+        
     },
 }
 --love.graphics.setBlendMode( "alpha", "alphamultiply" )
@@ -286,7 +288,31 @@ function dengui.msgbox(msg,args)
     --os.execute("msg "..args.." * "..msg,1000,true)
     io.popen("msg "..args.." * "..msg,"r")
 end
-
+function dengui.new_img_asset(filename,storename,settings)
+    if filename==nil or love.filesystem.exists(filename)==false then warn(filename.." was not found") return end
+    settings=settings or {mipmaps=false,linear=false,dpiscale=1}
+    settings.mipmaps=settings.mipmaps or false
+    settings.linear=settings.linear or false
+    settings.dpiscale=settings.dpiscale or 1
+    storename=storename or filename
+    local img=lg.newImage(filename,settings)
+    if img then
+        assets[storename]=img
+        print(storename,filename)
+    else
+        warn(filename.." was unable to load")
+    end
+    return
+end
+function dengui.release_img_asset(storename)
+    if assets[storename] then
+        assets[storename]:release()
+        assets[storename]=nil
+    else
+        warn("cant relase an asset that does not exist")
+    end
+    return
+end
 function dengui.new_box(canvas_id,position,size,colour,mode)
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
     --if type(position)~="table" then warn("invalid position "..debug.traceback()) end
@@ -463,13 +489,16 @@ local function render_text_button(canvas_id,obj)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 
-function dengui.new_image(canvas_id,file,position,scale,colour)
+function dengui.new_image(canvas_id,asset,position,scale,colour)
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
     local gen=firstlayercopy(defaults.image)
     gen.position=position or defaults.image.position
     gen.scale=scale or defaults.image.scale
     gen.colour=colour or defaults.image.colour
-    gen.file=file or defaults.image.file
+    gen.asset=asset or defaults.image.asset
+    if assets[asset]==nil then
+       dengui.new_img_asset(asset) 
+    end
     ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=gen
     ui_storage[canvas_id][0]=#ui_storage[canvas_id]
     --dengui.re_render_canvas(canvas_id)
@@ -481,10 +510,13 @@ local function render_image(canvas_id,obj)
     local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
     local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    --local img=love.graphics.newImage(obj.asset,obj.settings)
+    local img=assets[obj.asset]
+    local imgx,imgy=img:getPixelDimensions()
+    local ssx=sx/imgx
+    local ssy=sy/imgy
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
-    local img=love.graphics.newImage(obj.file,obj.settings)
-    print(img)
-    love.draw(img)-- (obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.draw(img, px, py,obj.rotation, ssx,ssy)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 
@@ -517,7 +549,7 @@ function dengui.re_render_canvas(canvas_id)
     if os.clock()-last_gc>math.max(math.min((1/ui_storage[canvas_id][0])*600000,60),3) then
         collectgarbage("collect")--> there is a memory leak somewhere. removing the sort makes it better, but making all variables nil after sorting doesnt help????
         last_gc=os.clock()
-        print("collected")
+        print("Garbage collected")
     end
 end
 
@@ -531,16 +563,12 @@ local str_char_map={
     ["kp/"]="/",
     ["space"]=" ",
     ["return"]="\n",
-    ["ß"]="ß",
-    ["ä"]="ä",
-    ["ö"]="ö",
-    ["´"]="´",
+--    ["ß"]="ß",
+--    ["ä"]="ä",
+--    ["ö"]="ö",
+--    ["´"]="´",
 }
-local str_char_remove={}
-for i,v in pairs(str_char_map)do
-    str_char_remove[#str_char_remove+1] = v
-end
-str_char_remove[0]=#str_char_remove
+--love.keyboard.setKeyRepeat(true)
 function dengui.textinput(key)
     if current_text_editing[1]~=0 then
         local sstring=ui_storage[current_text_editing[1]][current_text_editing[2]].text
@@ -567,31 +595,42 @@ function dengui.textinput(key)
         dengui.re_render_canvas(current_text_editing[1])
     end
 end
+
 function dengui.keypressed(key)
     --print(key)
     if current_text_editing[1]~=0 then
         local sstring=ui_storage[current_text_editing[1]][current_text_editing[2]].text
         if #key==1 and #sstring<ui_storage[current_text_editing[1]][current_text_editing[2]].limit then
-            --local upper=false
-            --if love.keyboard.isModifierActive("capslock") then
-            --    upper=not upper
-            --end
-            --if love.keyboard.isDown("lshift") then
-            --    upper= not upper
-            --end
-            --if upper==true then
-            --    key=string.upper(key)
-            --end
-            --ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..key
         elseif key=="backspace" then
-            for ii=1,str_char_remove[0] do
-                local start,eend = string.find(sstring, str_char_remove[ii],#sstring-#str_char_remove[ii])
-                if eend==#sstring then
-                    sstring=sstring:sub(1,-2)
+            if love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl") then
+                local lastSpace = string.find(string.reverse(sstring), " ")
+                local lastnl = string.find(string.reverse(sstring), "\n")
+                if (lastSpace or 0)<(lastnl or 0) then
+                    lastSpace=lastnl
+                end
+                if lastSpace then
+                    sstring=string.sub(sstring, 1, #sstring - lastSpace)
+                else
+                    sstring=""
+                end
+                ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring
+            else
+                local byteoffset = utf8.offset(sstring, -1)
+                if byteoffset then
+                    sstring=sstring:sub(1,byteoffset-1)
+                ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring
                 end
             end
-            sstring=sstring:sub(1,-2)
-            ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring
+        elseif key=="right" then
+            cursor_pos=cursor_pos+1
+            if #sstring<cursor_pos then
+                cursor_pos=#sstring
+            end
+        elseif key=="left" then
+            cursor_pos=cursor_pos-1
+            if 0>cursor_pos then
+                cursor_pos=0
+            end
         elseif str_char_map[key] and #key>4 then
             ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..str_char_map[key]
         end
@@ -630,13 +669,7 @@ function dengui.mousepressed(x, y, button, isTouch)
                 end
             elseif ui_storage[i][ii].type=="text_button" then
                 if dengui.is_over_ui(i,ii,x,y)==true then
-                    if button==1 then
-                        ui_storage[i][ii].left_func("left",x,y)
-                    elseif button==2 then
-                        ui_storage[i][ii].right_func("right",x,y)
-                    elseif button==3 then
-                        ui_storage[i][ii].middle_func("middle",x,y)
-                    end
+                    ui_storage[i][ii][button.."_func"](x,y)
                 end
             end
         end
