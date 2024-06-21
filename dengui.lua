@@ -73,7 +73,7 @@ end
 local function nofunc(button)
     --print("button has no "..button.." function. if its not supposed to have a function, it shouldnt be a button.")
 end
-
+local standart_font=love.graphics.getFont()
 local dengui={}
 local utf8=require("utf8")
 local ui_storage={[0]=0}
@@ -106,6 +106,16 @@ local defaults={
         colour={1,1,1,1},
         mode="fill"
     },
+    boxr={
+        type="boxr",
+        position={scale={x=0,y=0},offset={x=0,y=0}},
+        size={scale={x=0,y=0},offset={x=0,y=0}},
+        anchor={x=0,y=0},
+        zindex=0,
+        colour={1,1,1,1},
+        mode="fill",
+        rotation=0,
+    },
     text={
         type="text",
         position={scale={x=0,y=0},offset={x=0,y=0}},
@@ -115,7 +125,7 @@ local defaults={
         colour={1,1,1,1},
         text="vergessen",
         rotation=0,
-        font="",
+        font=standart_font,
     },
     textf={
         type="textf",
@@ -128,7 +138,7 @@ local defaults={
         text="vergessen",
         alignmode="center",
         rotation=0,
-        font="",
+        font=standart_font,
     },
     textfb={
         type="textfb",
@@ -144,7 +154,7 @@ local defaults={
         text="vergessen",
         alignmode="center",
         rotation=0,
-        font="",
+        font=standart_font,
     },
     text_edit={
         type="text_edit",
@@ -160,7 +170,7 @@ local defaults={
         text="",
         alignmode="center",
         rotation=0,
-        font="",                ---img
+        font=standart_font,                ---img
         background_text="vergessen2",
         limit=100,
         enabled=true,
@@ -179,7 +189,7 @@ local defaults={
         text="vergessen",
         alignmode="center",
         rotation=0,
-        font="",
+        font=standart_font,
         ["1_func"]=nofunc,
         ["2_func"]=nofunc,
         ["3_func"]=nofunc,
@@ -198,12 +208,37 @@ local defaults={
 }
 --love.graphics.setBlendMode( "alpha", "alphamultiply" )
 --love.graphics.setBlendState( "add", "zero","one" )
-local standart_font=love.graphics.getFont()
+
 print(standart_font)
 local function zsort(a,b)
     return a.zindex<b.zindex
 end
-function dengui.new_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position)
+function dengui.new_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position,canvas_anchor)
+    do_aspect=do_aspect or false
+    aspect_ratio=aspect_ratio or sx/sy
+    zindex=zindex or 0
+    canvas_position=canvas_position or {scale={x=0.5,y=0.5},offset={x=0,y=0}}
+    canvas_anchor=canvas_anchor or {x=0.5,y=0.5}
+    if do_aspect==true then
+        if sx/sy>= aspect_ratio then
+            sx=sy/aspect_ratio
+        else
+            sy=sx*aspect_ratio
+        end
+    end
+    local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
+    canvases[#canvases+1] = {canvas=lg.newCanvas(sx,sy),x=sx,y=sy,zindex=zindex,do_aspect=do_aspect,aspect_ratio=aspect_ratio,position=canvas_position,anchor=canvas_anchor}
+    canvases[0]=#canvases
+    ui_storage[canvases[0]]={[0]=0}
+    local px=canvas_position.scale.x*screenX+canvas_position.offset.x   -sx*0.5
+    local py=canvas_position.scale.y*screenY+canvas_position.offset.y   -sy*0.5
+    canvases[canvases[0]].truepos={x=px,y=py}
+    canvases=qsort.dup(canvases)
+    ---table.sort(canvases,zsort)
+    print(canvases[canvases[0]].do_aspect)
+    return canvases[0]
+end
+function dengui.new_scrolling_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position)
     do_aspect=do_aspect or false
     aspect_ratio=aspect_ratio or sx/sy
     zindex=zindex or 0
@@ -272,8 +307,8 @@ function dengui.draw()
         local canv=canvases[i]
         local sx=canv.x
         local sy=canv.y
-        local px=canv.position.scale.x*screenX+canv.position.offset.x   -sx*0.5
-        local py=canv.position.scale.y*screenY+canv.position.offset.y   -sy*0.5
+        local px=canv.position.scale.x*screenX+canv.position.offset.x   -sx*canv.anchor.x
+        local py=canv.position.scale.y*screenY+canv.position.offset.y   -sy*canv.anchor.y
         lg.draw(canvases[i].canvas,px,py)
     end
     if cursor_timer<os.clock()-1 and current_text_editing[1]~=0 then
@@ -338,6 +373,54 @@ local function render_box(canvas_id,box)
     lg.rectangle(box.mode, px, py, sx, sy)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
+function dengui.new_boxr(canvas_id,position,size,colour,mode,rotation)
+    if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
+    --if type(position)~="table" then warn("invalid position "..debug.traceback()) end
+    --if type(size)~="table" then warn("invalid size "..debug.traceback()) end
+    --if type(colour)~="table" and type(colour)~="nil" then warn("invalid colour "..debug.traceback()) end
+    local genbox=firstlayercopy(defaults.boxr)
+    genbox.position=position or defaults.boxr.position
+    genbox.size=size or defaults.boxr.size
+    genbox.colour=colour or defaults.boxr.colour
+    genbox.mode=mode or defaults.boxr.mode
+    genbox.rotation=rotation or defaults.boxr.rotation
+    ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=genbox
+    ui_storage[canvas_id][0]=#ui_storage[canvas_id]
+    --dengui.re_render_canvas(canvas_id)
+    return genbox
+end
+local function render_boxr(canvas_id,box)
+    local thiscan=canvases[canvas_id]
+    local sx=box.size.scale.x*thiscan.x+box.size.offset.x
+    local sy=box.size.scale.y*thiscan.y+box.size.offset.y
+    local px=box.position.scale.x*thiscan.x+box.position.offset.x   -sx*box.anchor.x
+    local py=box.position.scale.y*thiscan.y+box.position.offset.y   -sy*box.anchor.y
+
+    local anchorX = sx * box.anchor.x
+    local anchorY = sy * box.anchor.y
+    local corners = {
+        { -anchorX, -anchorY },       -- top-left
+        { sx - anchorX, -anchorY },   -- top-right
+        { sx - anchorX, sy - anchorY }, -- bottom-right
+        { -anchorX, sy - anchorY }    -- bottom-left
+    }
+    local function rotatePoint(x, y, angle)
+        return {
+            x * math.cos(angle) - y * math.sin(angle),
+            x * math.sin(angle) + y * math.cos(angle)
+        }
+    end
+    local rotatedCorners = {}
+    for i, corner in ipairs(corners) do
+        local rotated = rotatePoint(corner[1], corner[2], box.rotation)
+        rotatedCorners[#rotatedCorners + 1] = { px + anchorX + rotated[1], py + anchorY + rotated[2] }
+    end
+    local px1,py1, px2,py2, px3,py3, px4,py4= rotatedCorners[1][1], rotatedCorners[1][2],rotatedCorners[2][1], rotatedCorners[2][2],rotatedCorners[3][1], rotatedCorners[3][2],rotatedCorners[4][1], rotatedCorners[4][2]
+    lg.setColor(box.colour[1],box.colour[2],box.colour[3],box.colour[4])
+    love.graphics.polygon(box.mode, px1,py1, px2,py2, px3,py3, px4,py4)
+    lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+end
+
 function dengui.new_text(canvas_id,text,position,scale,colour)
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
     local gen=firstlayercopy(defaults.text)
@@ -376,13 +459,14 @@ function dengui.new_textf(canvas_id,text,position,size,scale,colour)
 end
 local function render_textf(canvas_id,obj)
     local thiscan=canvases[canvas_id]
-    --local thisfont=lg.getFont()
     local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
     local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
     local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
+    love.graphics.setFont(obj.font)
     lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    love.graphics.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 function dengui.new_textfb(canvas_id,text,position,size,scale,colour)
@@ -524,6 +608,7 @@ end
 
 local render_function_list={
     ["box"]=render_box,
+    ["boxr"]=render_boxr,
     ["text"]=render_text,
     ["textf"]=render_textf,
     ["textfb"]=render_textfb,
@@ -654,8 +739,6 @@ function dengui.keypressed(key)
             end
             cursor_state=true
             cursor_timer=os.clock()
-        elseif key=="up" then
-            local lastnl = string.find(string.reverse(sstring), "\n")
         elseif str_char_map[key] and #key>3 then
             print(key)
             ui_storage[current_text_editing[1]][current_text_editing[2]].text=string_insert(sstring,str_char_map[key],cursor_pos)

@@ -1,14 +1,25 @@
 local dengui=require("dengui")
 print(love.getVersion())
 local mytext
+local currpm=0
+local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
+local maincanvas_id=dengui.new_canvas(screenX,screenY,1,true,1,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{x=0.5,y=0.5})
+local secondcanvas_id=dengui.new_canvas(screenX,screenY,1,true,1)
+local tachoid=dengui.new_canvas(700,700,255,true,1,{scale={x=0.5,y=1},offset={x=0,y=0}},{x=0.5,y=1})
+local tacholineid=dengui.new_canvas(700,700,255,true,1,{scale={x=0.5,y=1},offset={x=0,y=0}},{x=0.5,y=1})
+local tachcent={x=0.5,y=0.9}
+local tach_line=dengui.new_boxr(tacholineid,{scale={x=tachcent.x,y=tachcent.y},offset={x=0,y=0}},{scale={x=0.008,y=0.19},offset={x=0,y=0}})
+tach_line.colour={1,0,0,1}
+tach_line.anchor={x=0.5,y=0.1}
+tach_line.zindex=100
+local maxrpm=7000
 function love.load(arg,arg2)
-    local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
-    local maincanvas_id=dengui.new_canvas(screenX,screenY,1,true,1)
-    local secondcanvas_id=dengui.new_canvas(screenX,screenY,1,true,1)
+    
+
     print(maincanvas_id)
     local mybox=dengui.new_box(maincanvas_id,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{scale={x=0.1,y=0.1},offset={x=0,y=0}},{1,1,1,1})
     mybox.anchor={x=0.5,y=0.5}
-    mybox.colour={1,0,1,1}
+    mybox.colour={.1,0,.1,1}
     mybox.size={scale={x=.9,y=.9},offset={x=0,y=0}}
     mybox.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
     mybox.zindex=-6
@@ -36,19 +47,28 @@ function love.load(arg,arg2)
     mytext_edit.position={scale={x=0.2,y=0.2},offset={x=0,y=0}}
     mytext_edit.zindex=2
 
-    local mytext_button=dengui.new_text_button(maincanvas_id,"enter shit here")
+    local mytext_button=dengui.new_text_button(maincanvas_id,"click here")
     mytext_button.alignmode="center"
     mytext_button.scale={x=1,y=1}
     mytext_button.colour={0,0,0,1}
     mytext_button.background_colour={1,1,1,1}
     mytext_button.border_colour={0,0,1,0.2}
     mytext_button.size={scale={x=0.1,y=0.1},offset={x=0,y=0}}
-    mytext_button.position={scale={x=0.7,y=0.7},offset={x=0,y=0}}
+    mytext_button.position={scale={x=0.7,y=0.3},offset={x=0,y=0}}
     mytext_button.zindex=2
+    mytext_button["1_func"]=function ()
+        if mytext_button.position.scale.y>0.2 then
+            mytext_button.position={scale={x=0.7,y=0.1},offset={x=0,y=0}}
+        else
+            mytext_button.position={scale={x=0.7,y=0.3},offset={x=0,y=0}}
+        end
+        dengui.re_render_canvas(maincanvas_id)
+        return
+    end
 
     dengui.new_img_asset("snekobread.png","snekobread")
     local my_image=dengui.new_image(maincanvas_id,"snekobread")
-    my_image.colour={1,1,1,1}
+    my_image.colour={1,1,1,.1}
     my_image.size={scale={x=0.5,y=0.5},offset={x=0,y=0}}
     my_image.position={scale={x=0.1,y=0.4},offset={x=0,y=0}}
     my_image.zindex=-4
@@ -56,9 +76,47 @@ function love.load(arg,arg2)
     dengui.msgbox("loaded","/TIME:1")
     dengui.re_render_all()
     --dengui.release_img_asset("snekobread")
+    --for i=0,1 do
+    --    local line=dengui.new_boxr(maincanvas_id,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{scale={x=0.055,y=0.7},offset={x=0,y=0}})
+    --    line.anchor={x=0.5,y=0}
+    --    line.zindex=10
+    --    line.rotation=math.rad(i*180)-math.rad(90)
+    --end
+    local berlin=love.graphics.newFont("BRLNSB.TTF", 64)
+    local linecount=7*5
+    for i=0,linecount do
+        local angle=i*math.rad(180)/linecount
+        local xs=0.05
+        local sx=math.cos(angle)*0.2
+        local sy=-(math.sin(angle)*0.2)
+        if i%5 ==0 then
+            xs=0.065
+            local xss=xs*1.5
+            local num=dengui.new_textf(tachoid,math.floor(0.5+(linecount-i)*(maxrpm/linecount)/100))
+            num.scale={x=0.4,y=0.4}
+            local font_scale={x=num.scale.x*berlin:getWidth("1234")/700,y=num.scale.y*berlin:getWidth("1234")/700}
+            num.position={scale={x=sx*(xss+1)*(font_scale.x+1)+tachcent.x,y=sy*(xss+1)*(font_scale.y+1)+tachcent.y},offset={x=0,y=0}}
+            num.font=berlin
+            num.size={scale={x=2*font_scale.x,y=font_scale.y},offset={x=0,y=0}}
+            num.anchor={x=num.scale.x*0.5,y=num.scale.y*0.5}
+            print(i,num.size.scale.x,num.anchor.x)
+            --print(i)
+        end
+        local line=dengui.new_boxr(tachoid,{scale={x=sx+tachcent.x,y=sy+tachcent.y},offset={x=0,y=0}},{scale={x=0.0055,y=xs},offset={x=0,y=0}})
+        line.anchor={x=0.5,y=0}
+        line.zindex=10
+        line.rotation=-angle +math.rad(90)
+        if i==0 or i==linecount then
+            print("sx",sx,sy,math.deg(angle))
+        end
+        --print(angle)
+    end
+    dengui.re_render_all()
 end
 function love.resize(w, h)
-    dengui.set_size_all(w,h)
+    dengui.set_size(1,w,h)
+    dengui.set_size(tachoid,w*0.75,h*0.75)
+    dengui.set_size(tacholineid,w*0.75,h*0.75)
 end
 function love.keypressed(key)
     dengui.keypressed(key)
@@ -100,7 +158,17 @@ function love.draw(dt)
        -- mytext.size={scale={x=0,y=0},offset={x=100,y=i/10}}
        --dengui.re_render_all()
     end
+    if love.keyboard.isDown("w") then
+        currpm=currpm +3000*dt
+        tach_line.rotation=(currpm/maxrpm)*math.pi +math.rad(90)
+        dengui.re_render_canvas(tacholineid)
+    elseif love.keyboard.isDown("s") then
+        currpm=currpm -3000*dt
+        tach_line.rotation=(currpm/maxrpm)*math.pi +math.rad(90)
+        dengui.re_render_canvas(tacholineid)
+    end
 
+    
     dengui.draw()
 
     local totdt=0
@@ -148,6 +216,6 @@ function love.run()
             love.graphics.present()
         end
 
-        ---if love.timer then love.timer.sleep(0.001) end
+        --if love.timer then love.timer.sleep(0.1) end
     end
 end
