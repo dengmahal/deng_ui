@@ -562,7 +562,7 @@ end
 
 local str_char_map={
     ["kp/"]="/",
-    ["space"]=" ",
+ --   ["space"]=" ",
     ["return"]="\n",
 --    ["ß"]="ß",
 --    ["ä"]="ä",
@@ -602,22 +602,33 @@ function dengui.keypressed(key)
         if #key==1 and #sstring<ui_storage[current_text_editing[1]][current_text_editing[2]].limit then
         elseif key=="backspace" then
             if love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl") then
-                local lastSpace = string.find(string.reverse(sstring), " ")
-                local lastnl = string.find(string.reverse(sstring), "\n")
+                local sst=sstring:sub(1,cursor_pos)
+                local lastSpace = string.find(string.reverse(sst), " ")
+                local lastnl = string.find(string.reverse(sst), "\n")
                 if (lastSpace or 0)<(lastnl or 0) then
                     lastSpace=lastnl
                 end
+                
                 if lastSpace then
-                    sstring=string.sub(sstring, 1, #sstring - lastSpace)
+                local strlen=#sst
+                    --print(#sstring-lastSpace,lastSpace)
+                    --print("sst",sst,"b",string.sub(sstring,cursor_pos+1,-1))
+                    --print("c",string.sub(sst, 1,lastSpace-strlen-1))
+                    --print(lastSpace-strlen-1,lastSpace)
+                    sstring=string.sub(sst, 1,strlen-lastSpace)..string.sub(sstring,cursor_pos+1,-1)
+                    cursor_pos=strlen-lastSpace
+                    --print(#sstring)
                 else
-                    sstring=""
+                    sstring=string.sub(sstring,cursor_pos+1,-1)
                 end
                 ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring
             else
-                local byteoffset = utf8.offset(sstring, -1)
+                local sst=sstring:sub(1,cursor_pos)
+                local byteoffset = utf8.offset(sst, -1)
                 if byteoffset then
-                    sstring=sstring:sub(1,byteoffset-1)
-                ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring
+                    sstring=sstring:sub(1,byteoffset-1)..sstring:sub(cursor_pos+1,-1)
+                    ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring
+                    cursor_pos=byteoffset-1
                 end
             end
         elseif key=="right" then
@@ -643,9 +654,12 @@ function dengui.keypressed(key)
             end
             cursor_state=true
             cursor_timer=os.clock()
-        elseif str_char_map[key] and #key>4 then
+        elseif key=="up" then
+            local lastnl = string.find(string.reverse(sstring), "\n")
+        elseif str_char_map[key] and #key>3 then
             print(key)
             ui_storage[current_text_editing[1]][current_text_editing[2]].text=string_insert(sstring,str_char_map[key],cursor_pos)
+            cursor_pos=cursor_pos+#str_char_map[key]
             --ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..str_char_map[key]
         end
         dengui.re_render_canvas(current_text_editing[1])

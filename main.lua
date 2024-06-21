@@ -32,7 +32,7 @@ function love.load(arg,arg2)
     mytext_edit.colour={0,0,0,1}
     mytext_edit.background_colour={1,1,1,1}
     mytext_edit.border_colour={0,0,1,0.2}
-    mytext_edit.size={scale={x=0.1,y=0.1},offset={x=0,y=0}}
+    mytext_edit.size={scale={x=0.5,y=0.1},offset={x=0,y=0}}
     mytext_edit.position={scale={x=0.2,y=0.2},offset={x=0,y=0}}
     mytext_edit.zindex=2
 
