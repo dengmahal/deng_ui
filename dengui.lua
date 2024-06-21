@@ -440,7 +440,8 @@ local function render_text_edit(canvas_id,obj)
     local text_to_render=tostring(obj.text)
     if current_text_editing[1]~=0 then
         if cursor_state==true then
-            text_to_render=text_to_render.."|"--utf8.char(204)
+            --text_to_render=text_to_render.."|"--utf8.char(204)
+            text_to_render=string_insert(text_to_render,"|",cursor_pos)
         end
     end
     
@@ -584,11 +585,9 @@ function dengui.textinput(key)
             if upper==true then
                 key=string.upper(key)
             end]]
-
-
-            ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..key
-            
-            
+            --ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..key
+            ui_storage[current_text_editing[1]][current_text_editing[2]].text=string_insert(sstring,key,cursor_pos)
+            cursor_pos=cursor_pos+#key
         --end
     end
     if current_text_editing[1]~=0 then
@@ -622,17 +621,34 @@ function dengui.keypressed(key)
                 end
             end
         elseif key=="right" then
-            cursor_pos=cursor_pos+1
+            local sst=sstring:sub(cursor_pos+1,-1)
+            local byteoffset=utf8.offset(sst:reverse(), -1)
+            print(sst,sst:reverse())
+            print(byteoffset)
+            if byteoffset then
+                cursor_pos=cursor_pos+(#sst-byteoffset)+1
+            end
+                --cursor_pos=cursor_pos+1
             if #sstring<cursor_pos then
                 cursor_pos=#sstring
             end
+            cursor_state=true
+            cursor_timer=os.clock()
         elseif key=="left" then
-            cursor_pos=cursor_pos-1
+            --local byteoffset=utf8.offset(sstring,cursor_pos-1)
+            local byteoffset=utf8.offset(sstring:sub(0,cursor_pos), -1)
+            if byteoffset then
+            cursor_pos=byteoffset-1
+            end
             if 0>cursor_pos then
                 cursor_pos=0
             end
+            cursor_state=true
+            cursor_timer=os.clock()
         elseif str_char_map[key] and #key>4 then
-            ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..str_char_map[key]
+            print(key)
+            ui_storage[current_text_editing[1]][current_text_editing[2]].text=string_insert(sstring,str_char_map[key],cursor_pos)
+            --ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..str_char_map[key]
         end
         dengui.re_render_canvas(current_text_editing[1])
     end
@@ -666,6 +682,7 @@ function dengui.mousepressed(x, y, button, isTouch)
                 if dengui.is_over_ui(i,ii,x,y)==true then
                     current_text_editing={i,ii}
                     hit_text_eedit=true
+                    cursor_pos=#ui_storage[i][ii].text
                 end
             elseif ui_storage[i][ii].type=="text_button" then
                 if dengui.is_over_ui(i,ii,x,y)==true then
