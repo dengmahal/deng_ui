@@ -622,11 +622,9 @@ function dengui.keypressed(key)
             end
         elseif key=="right" then
             local sst=sstring:sub(cursor_pos+1,-1)
-            local byteoffset=utf8.offset(sst:reverse(), -1)
-            print(sst,sst:reverse())
-            print(byteoffset)
+            local byteoffset=sst:match("[%z\1-\127\194-\244][\128-\191]*")
             if byteoffset then
-                cursor_pos=cursor_pos+(#sst-byteoffset)+1
+                cursor_pos=cursor_pos+#byteoffset
             end
                 --cursor_pos=cursor_pos+1
             if #sstring<cursor_pos then
