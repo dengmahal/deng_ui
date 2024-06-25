@@ -35,10 +35,11 @@ function qsort.quicksort(tab,left,right)
     return tab
 end
 function qsort.dup(tab)
-    if #tab>1 then
+    if #tab>1000 then
         local counts={}
         local exists={}
         local storage={}
+        local fromto={}
         for i=1,tab[0] do
             local v=tab[i].zindex
             if counts[v]==nil then
@@ -47,23 +48,29 @@ function qsort.dup(tab)
                 storage[v]={}
             end
             counts[v]=counts[v]+1
-            storage[v][#storage[v]+1]=tab[i]
+            storage[v][#storage[v]+1]={tab[i],i}
         end
         qsort.quicksort(exists)
         local ntab={}
         for i=1,#exists do
             local v=exists[i]
             for ii=1,counts[v] do
-                ntab[#ntab+1] = storage[v][ii]
+                ntab[#ntab+1] = storage[v][ii][1]
+                fromto[storage[v][ii][2]]=#ntab
             end
         end
         ntab[0]=#ntab
+        fromto[0]=ntab[0]
         --counts=nil
         --exists=nil
         --storage=nil
-        return ntab
+        return ntab,fromto
     else
-        return tab
+        local fromto={}
+        for i=1,tab[0] do
+            fromto[i]=i
+        end
+        return tab,fromto
     end
 end
 local function string_insert(str1, str2, pos)
@@ -78,8 +85,10 @@ local dengui={}
 local utf8=require("utf8")
 local ui_storage={[0]=0}
 local canvases={}
-local canvases_to_refresh={}
+local canvases_drawables={}
 local current_text_editing={0,0}
+local canvas_render_order={}
+local canv_from_to={}
 local cursor_pos=0
 local assets={}
 local function warn(message)
@@ -213,12 +222,16 @@ print(standart_font)
 local function zsort(a,b)
     return a.zindex<b.zindex
 end
-function dengui.new_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position,canvas_anchor)
+function dengui.new_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position,canvas_anchor,scrollable,scrollbar_width,scroll_lenght)
     do_aspect=do_aspect or false
     aspect_ratio=aspect_ratio or sx/sy
     zindex=zindex or 0
     canvas_position=canvas_position or {scale={x=0.5,y=0.5},offset={x=0,y=0}}
     canvas_anchor=canvas_anchor or {x=0.5,y=0.5}
+    scrollable=scrollable or false
+    scrollbar_width=scrollbar_width or 10
+    scroll_lenght=scroll_lenght or 3
+    local canv_id=#canvases+1
     if do_aspect==true then
         if sx/sy>= aspect_ratio then
             sx=sy/aspect_ratio
@@ -227,45 +240,48 @@ function dengui.new_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position,c
         end
     end
     local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
-    canvases[#canvases+1] = {canvas=lg.newCanvas(sx,sy),x=sx,y=sy,zindex=zindex,do_aspect=do_aspect,aspect_ratio=aspect_ratio,position=canvas_position,anchor=canvas_anchor}
-    canvases[0]=#canvases
-    ui_storage[canvases[0]]={[0]=0}
+    local cano={
+        canvas=lg.newCanvas(sx,sy),
+        x=sx,y=sy,
+        zindex=zindex,
+        do_aspect=do_aspect,
+        aspect_ratio=aspect_ratio,
+        position=canvas_position,
+        anchor=canvas_anchor,
+        scrollable=scrollable,
+        scrollbar_width=scrollbar_width,
+        scroll_lenght=scroll_lenght,
+        scroll_y=0,
+    }
+    canvases[canv_id] = firstlayercopy(cano)
+    canvases[0]=canv_id
+    ui_storage[canv_id]={[0]=0}
     local px=canvas_position.scale.x*screenX+canvas_position.offset.x   -sx*0.5
     local py=canvas_position.scale.y*screenY+canvas_position.offset.y   -sy*0.5
-    canvases[canvases[0]].truepos={x=px,y=py}
-    canvases=qsort.dup(canvases)
+    canvases[canv_id].truepos={x=px,y=py}
+    --for i,v in pairs(canvases[canv_id])do
+    --   print(i,v) 
+    --end
+    canvases_drawables[0]=#canvases
+    canvases_drawables,canv_from_to=qsort.dup(canvases)
+    --canvases=qsort.dup(canvases)
     ---table.sort(canvases,zsort)
-    print(canvases[canvases[0]].do_aspect)
-    return canvases[0]
+    --print(canvases[canv_id].do_aspect)
+    --print("newcavn",canvases[0])
+    --for i=1,canvases_drawables[0] do
+    --    print(i,canv_from_to[i],canvases[i].zindex)
+    --end
+    --print("newcanallcanvas",canvases[0])
+    --for i=1,canvases[0] do
+    --    print(i,canvases[i].do_aspect,canvases[0])
+    --end
+
+    return canv_id,canvases[canv_id]
 end
-function dengui.new_scrolling_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position)
-    do_aspect=do_aspect or false
-    aspect_ratio=aspect_ratio or sx/sy
-    zindex=zindex or 0
-    canvas_position=canvas_position or {scale={x=0.5,y=0.5},offset={x=0,y=0}}
-    if do_aspect==true then
-        if sx/sy>= aspect_ratio then
-            sx=sy/aspect_ratio
-        else
-            sy=sx*aspect_ratio
-        end
-    end
-    local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
-    canvases[#canvases+1] = {canvas=lg.newCanvas(sx,sy),x=sx,y=sy,zindex=zindex,do_aspect=do_aspect,aspect_ratio=aspect_ratio,position=canvas_position}
-    canvases[0]=#canvases
-    ui_storage[canvases[0]]={[0]=0}
-    local px=canvas_position.scale.x*screenX+canvas_position.offset.x   -sx*0.5
-    local py=canvas_position.scale.y*screenY+canvas_position.offset.y   -sy*0.5
-    canvases[canvases[0]].truepos={x=px,y=py}
-    canvases=qsort.dup(canvases)
-    ---table.sort(canvases,zsort)
-    print(canvases[canvases[0]].do_aspect)
-    return canvases[0]
-end
-function dengui.set_size(canvas_id,x,y)
+function dengui.set_size(canvas_id,x,y,scroll_lenght)
+    --print("soze",canvas_id,x,y,canvases[canvas_id].do_aspect)
     --reconstruct canvas here
     if canvases[canvas_id] then
-        canvases[canvas_id].canvas:release()
         if canvases[canvas_id].do_aspect==true then
             if x/y>= canvases[canvas_id].aspect_ratio then
                 x=y/canvases[canvas_id].aspect_ratio
@@ -273,13 +289,22 @@ function dengui.set_size(canvas_id,x,y)
                 y=x*canvases[canvas_id].aspect_ratio
             end
         end
-        local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
+        canvases[canvas_id].canvas:release()
+        local screenX,screenY=love.graphics.getDimensions( )--love.graphics.getWidth( ),love.graphics.getHeight( )
         canvases[canvas_id].canvas=lg.newCanvas(x,y)
         canvases[canvas_id].x=x
         canvases[canvas_id].y=y
         local px=canvases[canvas_id].position.scale.x*screenX+canvases[canvas_id].position.offset.x   -x*0.5
         local py=canvases[canvas_id].position.scale.y*screenY+canvases[canvas_id].position.offset.y   -y*0.5
         canvases[canvas_id].truepos={x=px,y=py}
+        if canvases[canvas_id].scrollable==true then
+            canvases[canvas_id].scroll_lenght=scroll_lenght or canvases[canvas_id].scroll_lenght
+        end
+        --print(canvas_id,canv_from_to[canvas_id])
+        canvases_drawables[canv_from_to[canvas_id]].canvas=canvases[canvas_id].canvas
+        canvases_drawables[canv_from_to[canvas_id]].x=canvases[canvas_id].x
+        canvases_drawables[canv_from_to[canvas_id]].y=canvases[canvas_id].y
+        --print(canvases_drawables[canv_from_to[canvas_id]].canvas)
         --canvases[canvas_id]={canvas=lg.newCanvas(x,y),x=x,y=y,canvases[canvas_id].zindex,do_aspect=canvases[canvas_id].do_aspect,aspect_ratio=canvases[canvas_id].aspect_ratio,position=canvases[canvas_id].position}
     else
         warn("canvas_id '"..canvas_id.."' not found")
@@ -304,12 +329,12 @@ local cursor_state=false
 function dengui.draw()
     local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
     for i=1,canvases[0] do
-        local canv=canvases[i]
+        local canv=canvases_drawables[i]--canvases[i]
         local sx=canv.x
         local sy=canv.y
         local px=canv.position.scale.x*screenX+canv.position.offset.x   -sx*canv.anchor.x
         local py=canv.position.scale.y*screenY+canv.position.offset.y   -sy*canv.anchor.y
-        lg.draw(canvases[i].canvas,px,py)
+        lg.draw(canv.canvas,px,py)
     end
     if cursor_timer<os.clock()-1 and current_text_editing[1]~=0 then
         cursor_timer=os.clock()
@@ -346,6 +371,7 @@ function dengui.release_img_asset(storename)
     else
         warn("cant relase an asset that does not exist")
     end
+    collectgarbage("collect")
     return
 end
 function dengui.new_box(canvas_id,position,size,colour,mode)
@@ -364,12 +390,15 @@ function dengui.new_box(canvas_id,position,size,colour,mode)
     return genbox
 end
 local function render_box(canvas_id,box)
+    --print("aa",canvas_id)
     local thiscan=canvases[canvas_id]
     local sx=box.size.scale.x*thiscan.x+box.size.offset.x
     local sy=box.size.scale.y*thiscan.y+box.size.offset.y
     local px=box.position.scale.x*thiscan.x+box.position.offset.x   -sx*box.anchor.x
     local py=box.position.scale.y*thiscan.y+box.position.offset.y   -sy*box.anchor.y
     lg.setColor(box.colour[1],box.colour[2],box.colour[3],box.colour[4])
+    --print("rect",sx,sy,box.size.scale.x,box.size.scale.y)
+    --print("rectcan",thiscan.x,thiscan.y)
     lg.rectangle(box.mode, px, py, sx, sy)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
@@ -623,14 +652,16 @@ function dengui.re_render_all()
 end
 local last_gc=os.clock()
 function dengui.re_render_canvas(canvas_id)
+    --print("recanv",canvas_id,canvases[canvas_id].do_aspect,canvases[canvas_id].aspect_ratio)
+    ---@diagnostic disable-next-line: param-type-mismatch
+    ui_storage[canvas_id]=qsort.dup(ui_storage[canvas_id])
+    
     lg.setCanvas(canvases[canvas_id].canvas)
     lg.clear()
     for i=1,ui_storage[canvas_id][0] do
         local obj=ui_storage[canvas_id][i]
         render_function_list[obj.type](canvas_id,obj)
     end
----@diagnostic disable-next-line: param-type-mismatch
-    ui_storage[canvas_id]=qsort.dup(ui_storage[canvas_id])
     lg.setCanvas()
     if os.clock()-last_gc>math.max(math.min((1/ui_storage[canvas_id][0])*600000,60),3) then
         collectgarbage("collect")--> there is a memory leak somewhere. removing the sort makes it better, but making all variables nil after sorting doesnt help????
