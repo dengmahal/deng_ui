@@ -4,33 +4,44 @@ local mytext
 local currpm=0
 local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
 local scroll_canv_id,scroll_canv_data=dengui.new_canvas(screenX,screenY,2,false)
+scroll_canv_data.scrollable=true
 local maincanvas_id,maincanvas_data=dengui.new_canvas(screenX,screenY,3,true,1,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{x=0.5,y=0.5})
 
 local tachoid,tacho_data=dengui.new_canvas(700,700,4,true,1,{scale={x=0.5,y=1},offset={x=0,y=0}},{x=0.5,y=1})
+tacho_data.scrollable=true
+tacho_data.scroll_lenght=3
 local tacholineid,tacholine_data=dengui.new_canvas(700,700,255,true,1,{scale={x=0.5,y=1},offset={x=0,y=0}},{x=0.5,y=1})
 local tachcent={x=0.5,y=0.9}
 local tach_line=dengui.new_boxr(tacholineid,{scale={x=tachcent.x,y=tachcent.y},offset={x=0,y=0}},{scale={x=0.008,y=0.19},offset={x=0,y=0}})
+--tacholine_data.scrollable=true
+--tacholine_data.scroll_lenght=3
+tacho_data.syncscrolls={tacholineid}
 tach_line.colour={1,0,0,1}
 tach_line.anchor={x=0.5,y=0.1}
 tach_line.zindex=100
 
 local maxrpm=7000
 function love.load(arg,arg2)
+    local arfont=love.graphics.newFont("fonts/CONSOLA.TTF",15)
+    local berlin=love.graphics.newFont("fonts/BRLNSB.TTF", 64)
     local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
     print("maincanvas_id",maincanvas_id)
+    print("tachoid",tachoid)
+    print("tacholineid",tacholineid)
+    print("scroll_canv_id",scroll_canv_id)
     local mybox=dengui.new_box(maincanvas_id,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{scale={x=0.1,y=0.1},offset={x=0,y=0}},{1,1,1,1})
     mybox.anchor={x=0.5,y=0.5}
     mybox.colour={.1,0,.1,1}
     mybox.size={scale={x=.9,y=.9},offset={x=0,y=0}}
     mybox.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
-    mybox.zindex=-6
+    mybox.zindex=1
 
     dengui.new_img_asset("snekobread.png","snekobread")
     local my_image=dengui.new_image(maincanvas_id,"snekobread")
     my_image.colour={1,1,1,.1}
     my_image.size={scale={x=0.5,y=0.5},offset={x=0,y=0}}
     my_image.position={scale={x=0.1,y=0.4},offset={x=0,y=0}}
-    my_image.zindex=-4
+    my_image.zindex=4
     dengui.re_render_all()
     dengui.msgbox("loaded","/TIME:1")
     dengui.re_render_all()
@@ -42,7 +53,29 @@ function love.load(arg,arg2)
     --    line.rotation=math.rad(i*180)-math.rad(90)
     --end
     --tacho
-    local berlin=love.graphics.newFont("fonts/BRLNSB.TTF", 64)
+    local edi=dengui.new_text_edit(maincanvas_id,"ye")
+    edi.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
+    edi.zindex=9
+    
+    local newb=dengui.new_text_button(maincanvas_id,string.rep("000000",5))
+    newb.anchor={x=0.5,y=0.5}
+    newb.colour={1,0,1,1}
+    newb.size={scale={x=.1,y=.1},offset={x=0,y=0}}
+    newb.position={scale={x=0.3,y=0.5},offset={x=0,y=0}}
+    newb.zindex=6
+    newb.font=arfont
+    newb["1_func"]=function ()
+        print("yes")
+    end
+    newb["2_func"]=function ()
+        print("yes2")
+    end
+    newb["3_func"]=function ()
+        print("yes3")
+    end
+
+
+    
     local linecount=7*5
     for i=0,linecount do
         local angle=i*math.rad(180)/linecount
@@ -133,10 +166,8 @@ function love.draw(dt)
         tach_line.rotation=(currpm/maxrpm)*math.pi +math.rad(90)
         dengui.re_render_canvas(tacholineid)
     end
-
-    
     dengui.draw()
-
+    
     local totdt=0
     for i=1,dt_list_len do
         totdt=totdt+dt_list[i]
@@ -145,7 +176,8 @@ function love.draw(dt)
     love.graphics.print("fpsavg"..dt_list_len..": "..math.floor(((100/avgdt)+0.5)/100),400,100)
     love.graphics.print("fps: "..math.floor(((love.timer.getFPS()*100)+0.5)/100),400,200)
     local mposx,mposy=love.mouse.getPosition()--love.mouse.getGlobalPosition()
-    love.graphics.print("mpos: "..math.floor(((mposx*100)+0.5)/100).." , "..math.floor(((mposy*100)+0.5)/100),600,200)
+    --love.graphics.setFont(,16)
+    love.graphics.printf("<>0 mpos: "..math.floor(((mposx*100)+0.5)/100).." , "..math.floor(((mposy*100)+0.5)/100),0,0,900)
 end
 
 

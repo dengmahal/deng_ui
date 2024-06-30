@@ -35,7 +35,7 @@ function qsort.quicksort(tab,left,right)
     return tab
 end
 function qsort.dup(tab)
-    if #tab>1000 then
+    if #tab>1 then
         local counts={}
         local exists={}
         local storage={}
@@ -249,9 +249,12 @@ function dengui.new_canvas(sx,sy,zindex,do_aspect,aspect_ratio,canvas_position,c
         position=canvas_position,
         anchor=canvas_anchor,
         scrollable=scrollable,
+        scrollbar_enabled=true,
         scrollbar_width=scrollbar_width,
+        scrollbar_color={1,1,1,1},
         scroll_lenght=scroll_lenght,
         scroll_y=0,
+        syncscrolls={},
     }
     canvases[canv_id] = firstlayercopy(cano)
     canvases[0]=canv_id
@@ -395,7 +398,7 @@ local function render_box(canvas_id,box)
     local sx=box.size.scale.x*thiscan.x+box.size.offset.x
     local sy=box.size.scale.y*thiscan.y+box.size.offset.y
     local px=box.position.scale.x*thiscan.x+box.position.offset.x   -sx*box.anchor.x
-    local py=box.position.scale.y*thiscan.y+box.position.offset.y   -sy*box.anchor.y
+    local py=box.position.scale.y*thiscan.y+box.position.offset.y   -sy*box.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(box.colour[1],box.colour[2],box.colour[3],box.colour[4])
     --print("rect",sx,sy,box.size.scale.x,box.size.scale.y)
     --print("rectcan",thiscan.x,thiscan.y)
@@ -446,6 +449,11 @@ local function render_boxr(canvas_id,box)
     end
     local px1,py1, px2,py2, px3,py3, px4,py4= rotatedCorners[1][1], rotatedCorners[1][2],rotatedCorners[2][1], rotatedCorners[2][2],rotatedCorners[3][1], rotatedCorners[3][2],rotatedCorners[4][1], rotatedCorners[4][2]
     lg.setColor(box.colour[1],box.colour[2],box.colour[3],box.colour[4])
+    local sco=thiscan.scroll_y*thiscan.y
+    py1=py1-sco
+    py2=py2-sco
+    py3=py3-sco
+    py4=py4-sco
     love.graphics.polygon(box.mode, px1,py1, px2,py2, px3,py3, px4,py4)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
@@ -468,9 +476,11 @@ local function render_text(canvas_id,obj)
     local sx=thisfont:getWidth(obj.text)*obj.scale.x
     local sy=thisfont:getHeight(obj.text)*obj.scale.y
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
-    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
+    lg.setFont(obj.font)
     lg.print(obj.text, px, py,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 function dengui.new_textf(canvas_id,text,position,size,scale,colour)
@@ -491,10 +501,14 @@ local function render_textf(canvas_id,obj)
     local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
     local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
-    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     love.graphics.setFont(obj.font)
-    lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    --lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
+    local n=math.ceil(obj.font:getWidth(obj.text)/sx)-1
+    local offsy=n*fh +obj.font:getLineHeight()*n*3
+    lg.printf(obj.text, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
     love.graphics.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
@@ -522,9 +536,15 @@ local function render_textfb(canvas_id,obj)
     lg.rectangle("fill", px, py, sx, sy)
     lg.setLineWidth(obj.border_width)
     lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
-    lg.rectangle("line", px, py, sx, sy)
+    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width*.5, sy-obj.border_width*.5)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
-    lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    --lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
+    local n=math.ceil(obj.font:getWidth(obj.text)/sx)-1
+    local offsy=n*fh +obj.font:getLineHeight()*n*3
+    lg.setFont(obj.font)
+    lg.printf(obj.text, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 
@@ -548,7 +568,7 @@ local function render_text_edit(canvas_id,obj)
     local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
     local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
-    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(obj.background_colour[1],obj.background_colour[2],obj.background_colour[3],obj.background_colour[4])
     local text_to_render=tostring(obj.text)
     if current_text_editing[1]~=0 then
@@ -561,7 +581,7 @@ local function render_text_edit(canvas_id,obj)
     lg.rectangle("fill", px, py, sx, sy)
     lg.setLineWidth(obj.border_width)
     lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
-    lg.rectangle("line", px, py, sx, sy)
+    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width, sy-obj.border_width)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     local todisplay=""
     if (obj.text=="" or obj.text==nil) and current_text_editing[1]==0 then
@@ -569,7 +589,13 @@ local function render_text_edit(canvas_id,obj)
     else
         todisplay=text_to_render
     end
-    lg.printf(todisplay, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    --lg.printf(todisplay, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
+    local n=math.ceil(obj.font:getWidth(todisplay)/sx)-1
+    local offsy=n*fh +obj.font:getLineHeight()*n*3
+    lg.setFont(obj.font)
+    lg.printf(todisplay, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 function dengui.new_text_button(canvas_id,text,position,size,func,scale,colour)
@@ -592,14 +618,19 @@ local function render_text_button(canvas_id,obj)
     local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
     local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
-    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(obj.background_colour[1],obj.background_colour[2],obj.background_colour[3],obj.background_colour[4])
     lg.rectangle("fill", px, py, sx, sy)
     lg.setLineWidth(obj.border_width)
     lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
-    lg.rectangle("line", px, py, sx, sy)
+    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width, sy-obj.border_width)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
-    lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.setFont(obj.font)
+    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
+    local n=math.ceil(obj.font:getWidth(obj.text)/sx)-1
+    local offsy=n*fh +obj.font:getLineHeight()*n*3
+    lg.printf(obj.text, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 
@@ -611,7 +642,7 @@ function dengui.new_image(canvas_id,asset,position,scale,colour)
     gen.colour=colour or defaults.image.colour
     gen.asset=asset or defaults.image.asset
     if assets[asset]==nil then
-       dengui.new_img_asset(asset) 
+       dengui.new_img_asset(asset)
     end
     ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=gen
     ui_storage[canvas_id][0]=#ui_storage[canvas_id]
@@ -623,7 +654,7 @@ local function render_image(canvas_id,obj)
     local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
     local sy=obj.size.scale.y*thiscan.y+obj.size.offset.y
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
-    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
+    local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y    -thiscan.scroll_y*thiscan.y
     --local img=love.graphics.newImage(obj.asset,obj.settings)
     local img=assets[obj.asset]
     local imgx,imgy=img:getPixelDimensions()
@@ -654,14 +685,18 @@ local last_gc=os.clock()
 function dengui.re_render_canvas(canvas_id)
     --print("recanv",canvas_id,canvases[canvas_id].do_aspect,canvases[canvas_id].aspect_ratio)
     ---@diagnostic disable-next-line: param-type-mismatch
-    ui_storage[canvas_id]=qsort.dup(ui_storage[canvas_id])
-    
+    local nuis,fromto_ui=qsort.dup(ui_storage[canvas_id])
+    ui_storage[canvas_id]=nuis
     lg.setCanvas(canvases[canvas_id].canvas)
     lg.clear()
     for i=1,ui_storage[canvas_id][0] do
         local obj=ui_storage[canvas_id][i]
         render_function_list[obj.type](canvas_id,obj)
     end
+    --scrollcanv
+
+
+    --
     lg.setCanvas()
     if os.clock()-last_gc>math.max(math.min((1/ui_storage[canvas_id][0])*600000,60),3) then
         collectgarbage("collect")--> there is a memory leak somewhere. removing the sort makes it better, but making all variables nil after sorting doesnt help????
@@ -798,21 +833,40 @@ function dengui.is_over_ui(canvas_id,ui_id,x,y)
         return false
     end
 end
+function dengui.is_over_canvas(canvas_id,x,y)
+    local thiscan=canvases[canvas_id]
+    local sx=thiscan.x
+    local sy=thiscan.y
+    local px=thiscan.truepos.x
+    local py=thiscan.truepos.y
+
+    local tx=px--+thiscan.truepos.x
+    local ty=py--+thiscan.truepos.y
+    if x>=tx and x<=tx+sx and y>=ty and y<=ty+sy then
+        return true
+    else
+        return false
+    end
+end
+
 
 function dengui.mousepressed(x, y, button, isTouch)
     local hit_text_eedit=false
     for i=1,canvases[0] do
-        local thiscan=canvases[i]
-        for ii=1,#ui_storage[i] do
-            if ui_storage[i][ii].type=="text_edit" then
-                if dengui.is_over_ui(i,ii,x,y)==true then
-                    current_text_editing={i,ii}
+        local canvchecking=canv_from_to[i]
+        local thiscan=canvases[canvchecking]
+        for ii=#ui_storage[canvchecking],1,-1 do
+            if ui_storage[canvchecking][ii].type=="text_edit" then
+                if dengui.is_over_ui(canvchecking,ii,x,y)==true then
+                    current_text_editing={canvchecking,ii}
                     hit_text_eedit=true
-                    cursor_pos=#ui_storage[i][ii].text
+                    cursor_pos=#ui_storage[canvchecking][ii].text
+                    break
                 end
-            elseif ui_storage[i][ii].type=="text_button" then
-                if dengui.is_over_ui(i,ii,x,y)==true then
-                    ui_storage[i][ii][button.."_func"](x,y)
+            elseif ui_storage[canvchecking][ii].type=="text_button" then
+                if dengui.is_over_ui(canvchecking,ii,x,y)==true then
+                    ui_storage[canvchecking][ii][button.."_func"](x,y)
+                    break
                 end
             end
         end
@@ -833,6 +887,30 @@ function dengui.mousemoved(x,y,dx,dy)
 
 end
 function dengui.wheelmoved(x,y)
-
+    local mx,my= love.mouse.getPosition()
+    for i=canvases[0],1,-1 do
+        local canvchecking=canv_from_to[i]
+        if canvases[canvchecking].scrollable==true then
+            local isover=dengui.is_over_canvas(canvchecking,mx,my)
+            if isover==true then
+                canvases[canvchecking].scroll_y=canvases[canvchecking].scroll_y-y*0.035
+                if canvases[canvchecking].scroll_y>canvases[canvchecking].scroll_lenght then
+                    canvases[canvchecking].scroll_y=canvases[canvchecking].scroll_lenght
+                elseif canvases[canvchecking].scroll_y<0 then
+                    canvases[canvchecking].scroll_y=0
+                else
+                    dengui.re_render_canvas(canvchecking)
+                end
+                --if canvases[canvchecking].syncscrolls[0]>0 then
+                for ii=1,#canvases[canvchecking].syncscrolls do
+                    local vvv=canvases[canvchecking].syncscrolls[ii]
+                    canvases[vvv].scroll_y=canvases[canvchecking].scroll_y
+                    dengui.re_render_canvas(vvv)
+                end
+                --end
+                break
+            end
+        end
+    end
 end
 return dengui
