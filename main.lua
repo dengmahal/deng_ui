@@ -1,4 +1,4 @@
-local dengui=require("dengui")
+local dengui=require("libs.dengui")
 print(love.getVersion())
 local mytext
 local currpm=0
@@ -7,14 +7,14 @@ local scroll_canv_id,scroll_canv_data=dengui.new_canvas(0.25,0.25,11,true,1)
 scroll_canv_data.scrollable=true
 scroll_canv_data.position={scale={x=0,y=0.5},offset={x=0,y=0}}
 scroll_canv_data.anchor={x=0,y=0.5}
-scroll_canv_data.scrollbar_color={0,1,1,1}
+scroll_canv_data.scrollbar_colour={0,1,1,1}
 scroll_canv_data.scroll_lenght=10
 local maincanvas_id,maincanvas_data=dengui.new_canvas(1,1,10,true,1,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{x=0.5,y=0.5})
 maincanvas_data.draw_bounds=true
 local tachoid,tacho_data=dengui.new_canvas(0.25,0.25,400,true,0.5,{scale={x=0.5,y=0.95},offset={x=0,y=0}},{x=0.5,y=1})
 tacho_data.scrollable=false
 tacho_data.scroll_lenght=1
-tacho_data.scrollbar_color={1,0,1,1}
+tacho_data.scrollbar_colour={1,0,1,1}
 scroll_canv_data.draw_bounds=false
 local tacholineid,tacholine_data=dengui.new_canvas(0.25,0.25,1000,true,0.5,{scale={x=0.5,y=0.95},offset={x=0,y=0}},{x=0.5,y=1})
 local tachcent={x=0.5,y=0.9}
@@ -40,9 +40,9 @@ function love.load(arg,arg2)
     print("tachoid",tachoid)
     print("tacholineid",tacholineid)
     print("scroll_canv_id",scroll_canv_id)
-    local mybox=dengui.new_box(maincanvas_id,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{scale={x=0.1,y=0.1},offset={x=0,y=0}},{1,1,1,1})
+    local mybox=dengui.new_box(maincanvas_id)--,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{scale={x=0.1,y=0.1},offset={x=0,y=0}},{1,1,1,1})
     mybox.anchor={x=0.5,y=0.5}
-    mybox.colour={.4,0,.4,0.8}
+    mybox.colour={74/255, 65/255, 42/255,1}   --448C
     mybox.size={scale={x=.9,y=.9},offset={x=0,y=0}}
     mybox.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
     mybox.zindex=1
@@ -132,6 +132,7 @@ function love.load(arg,arg2)
     --print(maincanvas_data.do_aspect,tacho_data.do_aspect,tacholine_data.do_aspect,scroll_canv_data.do_aspect)
     --print(maincanvas_data.aspect_ratio,tacho_data.aspect_ratio,tacholine_data.aspect_ratio,scroll_canv_data.aspect_ratio)
     dengui.re_render_all()
+    dengui.set_render_screen_dims(1,1,0.5,0.5,0,false,1)
 end
 function love.resize(w, h)
     --dengui.set_size(maincanvas_id,w,h)
