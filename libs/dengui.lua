@@ -333,7 +333,8 @@ function dengui.new_canvas(sx_s,sy_s,zindex,do_aspect,aspect_ratio,canvas_positi
         scroll_y=0,
         syncscrolls={},
         draw_bounds=false,
-        id=canv_id
+        id=canv_id,
+        visible=true,
     }
     canvases[canv_id] = firstlayercopy(cano)
     canvases[0]=canv_id
@@ -423,7 +424,9 @@ function dengui.draw()
         local py=canv.position.scale.y*screenY+canv.position.offset.y   -sy*canv.anchor.y +screen_canv_p.position.y
         --print(px,py,sx,sy,canv.x)
         lg.setColor(1,1,1,1)
-        lg.draw(canv.canvas,px,py,screen_canv_p.rotation)
+        if canv.visible==true then
+            lg.draw(canv.canvas,px,py,screen_canv_p.rotation)
+        end
     end
     if cursor_timer<os.clock()-1 and current_text_editing[1]~=0 then
         cursor_timer=os.clock()

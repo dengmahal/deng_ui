@@ -127,7 +127,8 @@ function love.load(arg,arg2)
         --print(angle)
     end
     --scrollable canvas
-    dengui.remove_canvas(4)
+    --dengui.remove_canvas(4)
+    --tacho_data.visible=false
     --print(maincanvas_id,tachoid,tacholineid,scroll_canv_id)
     --print(maincanvas_data.do_aspect,tacho_data.do_aspect,tacholine_data.do_aspect,scroll_canv_data.do_aspect)
     --print(maincanvas_data.aspect_ratio,tacho_data.aspect_ratio,tacholine_data.aspect_ratio,scroll_canv_data.aspect_ratio)
