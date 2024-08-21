@@ -333,6 +333,7 @@ function dengui.new_canvas(sx_s,sy_s,zindex,do_aspect,aspect_ratio,canvas_positi
         scroll_y=0,
         syncscrolls={},
         draw_bounds=false,
+        id=canv_id
     }
     canvases[canv_id] = firstlayercopy(cano)
     canvases[0]=canv_id
@@ -357,7 +358,7 @@ function dengui.new_canvas(sx_s,sy_s,zindex,do_aspect,aspect_ratio,canvas_positi
     --    print(i,canvases[i].do_aspect,canvases[0])
     --end
 
-    return canv_id,canvases[canv_id]
+    return canvases[canv_id]
 end
 function dengui.set_size(canvas_id,x,y,scroll_lenght)
     --print("soze",canvas_id,x,y,canvases[canvas_id].do_aspect)
@@ -461,6 +462,17 @@ function dengui.release_img_asset(storename)
     end
     collectgarbage("collect")
     return
+end
+function dengui.remove_canvas(id)
+    if id then
+        local thiscanv=canvases[id]
+        thiscanv.canvas:release()
+        table.remove(canvases,id)
+        canvases[0]=#canvases
+        for i=1,canvases[0] do
+            canvases[i].id=i
+        end
+    end
 end
 function dengui.new_box(canvas_id,position,size,colour,mode)
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
@@ -810,6 +822,7 @@ function dengui.re_render_all()
 end
 local last_gc=os.clock()
 function dengui.re_render_canvas(canvas_id)
+    if canvas_id>canvases[0] then warn("canvas does not exist") return end
     --local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
     local screenX,screenY=screen_canv_p.size.x,screen_canv_p.size.y
     --print("recanv",canvas_id,canvases[canvas_id].do_aspect,canvases[canvas_id].aspect_ratio)
