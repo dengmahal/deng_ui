@@ -114,7 +114,8 @@ local defaults={
         anchor={x=0,y=0},
         zindex=0,
         colour={1,1,1,1},
-        mode="fill"
+        mode="fill",
+        round=0,
     },
     boxr={
         type="boxr",
@@ -165,6 +166,7 @@ local defaults={
         alignmode="center",
         rotation=0,
         font=standart_font,
+        round=0,
     },
     text_edit={
         type="text_edit",
@@ -184,6 +186,7 @@ local defaults={
         background_text="vergessen2",
         limit=100,
         enabled=true,
+        round=0,
     },
     text_button={
         type="text_button",
@@ -203,6 +206,7 @@ local defaults={
         ["2_func"]=nofunc,
         ["3_func"]=nofunc,
         enabled=true,
+        round=0,
     },
     image={
         type="image",
@@ -230,6 +234,7 @@ local defaults={
         ["2_func"]=nofunc,
         ["3_func"]=nofunc,
         enabled=true,
+        round=0,
     },
 }
 --love.graphics.setBlendMode( "alpha", "alphamultiply" )
@@ -483,7 +488,7 @@ local function render_box(canvas_id,box)
     --print("rect",sx,sy,box.size.scale.x,box.size.scale.y)
     --print("rectcan",thiscan.x,thiscan.y)
     --print(px,py,sx,sy)
-    lg.rectangle(box.mode, px, py, sx, sy)
+    lg.rectangle(box.mode, px, py, sx, sy,box.round,box.round)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
 function dengui.new_boxr(canvas_id,position,size,colour,mode,rotation)
@@ -614,10 +619,10 @@ local function render_textfb(canvas_id,obj)
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
     local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y
     lg.setColor(obj.background_colour[1],obj.background_colour[2],obj.background_colour[3],obj.background_colour[4])
-    lg.rectangle("fill", px, py, sx, sy)
+    lg.rectangle("fill", px, py, sx, sy,obj.round,obj.round)
     lg.setLineWidth(obj.border_width)
     lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
-    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width*.5, sy-obj.border_width*.5)
+    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width*.5, sy-obj.border_width*.5,obj.round,obj.round)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     --lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
     local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
@@ -659,10 +664,10 @@ local function render_text_edit(canvas_id,obj)
         end
     end
     
-    lg.rectangle("fill", px, py, sx, sy)
+    lg.rectangle("fill", px, py, sx, sy,obj.round,obj.round)
     lg.setLineWidth(obj.border_width)
     lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
-    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width, sy-obj.border_width)
+    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width, sy-obj.border_width,obj.round,obj.round)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     local todisplay=""
     if (obj.text=="" or obj.text==nil) and current_text_editing[1]==0 then
@@ -701,10 +706,10 @@ local function render_text_button(canvas_id,obj)
     local px=obj.position.scale.x*thiscan.x+obj.position.offset.x   -sx*obj.anchor.x
     local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(obj.background_colour[1],obj.background_colour[2],obj.background_colour[3],obj.background_colour[4])
-    lg.rectangle("fill", px, py, sx, sy)
+    lg.rectangle("fill", px, py, sx, sy,obj.round,obj.round)
     lg.setLineWidth(obj.border_width)
     lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
-    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width, sy-obj.border_width)
+    lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width, sy-obj.border_width,obj.round,obj.round)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     lg.setFont(obj.font)
     local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
@@ -781,7 +786,7 @@ local function render_image_button(canvas_id,obj)
     local tpy=py-offsetY*0.5+sy*0.5
     lg.setColor(obj.border_colour[1],obj.border_colour[2],obj.border_colour[3],obj.border_colour[4])
     lg.setLineWidth(obj.border_width)
-    lg.rectangle("line",px,py,sx,sy)
+    lg.rectangle("line",px,py,sx,sy,obj.round,obj.round)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     lg.draw(img, tpx, tpy,obj.rotation, ssx,ssy)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])

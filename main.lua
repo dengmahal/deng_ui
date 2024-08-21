@@ -46,6 +46,7 @@ function love.load(arg,arg2)
     mybox.size={scale={x=.9,y=.9},offset={x=0,y=0}}
     mybox.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
     mybox.zindex=1
+    mybox.round=20
 
     for i=1,13,1 do
         my_images[i]=dengui.new_image(scroll_canv_id,"snekobread")
