@@ -38,25 +38,26 @@ function qsort.dup(tab)
     if #tab>1 then
         local counts={}
         local exists={}
-        local storage={}
         local fromto={}
         for i=1,tab[0] do
             local v=tab[i].zindex
             if counts[v]==nil then
-                counts[v]=0
+                counts[v]={}
                 exists[#exists+1] = v
-                storage[v]={}
+                --storage[v]={}
             end
-            counts[v]=counts[v]+1
-            storage[v][#storage[v]+1]={tab[i],i}
+            counts[v][#counts[v]+1]={tab[i],i}
+            --counts[v]=counts[v]+1
+            --storage[v][#storage[v]+1]={tab[i],i}
         end
         qsort.quicksort(exists)
         local ntab={}
         for i=1,#exists do
             local v=exists[i]
-            for ii=1,counts[v] do
-                ntab[#ntab+1] = storage[v][ii][1]
-                fromto[storage[v][ii][2]]=#ntab
+            for ii=1,#counts[v] do
+                ntab[#ntab+1] = counts[v][ii][1]
+                fromto[counts[v][ii][2]]=#ntab
+                --fromto[storage[v][ii][2]]=#ntab
             end
         end
         ntab[0]=#ntab
@@ -80,7 +81,8 @@ end
 local function nofunc(button)
     --print("button has no "..button.." function. if its not supposed to have a function, it shouldnt be a button.")
 end
-local standart_font=love.graphics.getFont()
+local ffi=require("ffi")
+local standart_font=love.graphics.newFont("/fonts/NotoSans-VariableFont_wdth,wght.ttf",12)--love.graphics.getFont()
 local dengui={}
 local utf8=require("utf8")
 local ui_storage={[0]=0}
@@ -91,6 +93,7 @@ local canvas_render_order={}
 local canv_from_to={}
 local cursor_pos=0
 local assets={}
+local ui_storage_drawable={}
 
 local function warn(message)
     local time = os.date("%Y-%m-%d %H:%M:%S")
@@ -285,13 +288,14 @@ function dengui.set_render_screen_dims(sx_s,sy_s,px_s,py_s,r,do_aspect,aspect_ra
     screen_canv_p.do_aspect=do_aspect
     screen_canv_p.aspect_ratio=aspect_ratio
     screen_canv_p.rotation=r
-    
-    for i=1,canvases[0] do
-        local v=canvases[i]
-        dengui.set_size(i,v.sx,v.sy)
+    if canvases[0] then
+        for i=1,canvases[0] do
+            local v=canvases[i]
+            dengui.set_size(i,v.sx,v.sy)
+        end
+        dengui.re_render_all()
     end
-    dengui.re_render_all()
-    return true
+    return sx,sy
 end
 function dengui.new_canvas(sx_s,sy_s,zindex,do_aspect,aspect_ratio,canvas_position,canvas_anchor,scrollable,scrollbar_width,scroll_lenght)
     do_aspect=do_aspect or false
@@ -380,6 +384,7 @@ function dengui.set_size(canvas_id,x,y,scroll_lenght)
         thiscanv.canvas=lg.newCanvas(x*screenX,y*screenY)
         thiscanv.x=x*screenX
         thiscanv.y=y*screenY
+        --thiscanv.anchor={x=0.5,y=0.5}
         if thiscanv.scrollable==true then
             thiscanv.scroll_lenght=scroll_lenght or thiscanv.scroll_lenght
         end
@@ -389,7 +394,7 @@ function dengui.set_size(canvas_id,x,y,scroll_lenght)
         local px=thiscanv.position.scale.x*screenX+thiscanv.position.offset.x   -thiscanv.x*thiscanv.anchor.x +screen_canv_p.position.x
         local py=thiscanv.position.scale.y*screenY+thiscanv.position.offset.y   -thiscanv.y*thiscanv.anchor.y +screen_canv_p.position.y
         thiscanv.truepos={x=px,y=py}
-        print(px,py,x,y,screenX,screenY)
+        --print(px,py,x,y,screenX,screenY)
     else
         warn("canvas_id '"..canvas_id.."' not found")
     end
@@ -467,16 +472,25 @@ function dengui.release_img_asset(storename)
     return
 end
 function dengui.remove_canvas(id)
+    warn("deprecated function: it causes pointers to point where they shouldnt!")
+    return 
+    --if id then
+    --    local thiscanv=canvases[id]
+    --    thiscanv.canvas:release()
+    --    table.remove(canvases,id)
+    --    canvases[0]=#canvases
+    --    for i=1,canvases[0] do
+    --        canvases[i].id=i
+    --    end
+    --end
+end
+function dengui.clean_canvas(id)
     if id then
-        local thiscanv=canvases[id]
-        thiscanv.canvas:release()
-        table.remove(canvases,id)
-        canvases[0]=#canvases
-        for i=1,canvases[0] do
-            canvases[i].id=i
-        end
+        ui_storage[id]={}
+        ui_storage[id][0]=0
     end
 end
+
 function dengui.new_box(canvas_id,position,size,colour,mode)
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
     --if type(position)~="table" then warn("invalid position "..debug.traceback()) end
@@ -607,9 +621,8 @@ local function render_textf(canvas_id,obj)
     love.graphics.setFont(obj.font)
     --lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
     local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
-    local n=math.ceil(obj.font:getWidth(obj.text)/sx)-1
-    local offsy=n*fh +obj.font:getLineHeight()*n*3
-    lg.printf(obj.text, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    local n=math.ceil(obj.font:getWidth(obj.text)*obj.scale.x/sx)
+    lg.printf(obj.text, px, py+(sy*0.5)-(n*fh*0.5*obj.scale.y)-obj.font:getLineHeight(),sx/obj.scale.x,obj.alignmode,0, obj.scale.x, obj.scale.y)
     love.graphics.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
@@ -640,11 +653,10 @@ local function render_textfb(canvas_id,obj)
     lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width*.5, sy-obj.border_width*.5,obj.round,obj.round)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     --lg.printf(obj.text, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
-    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
-    local n=math.ceil(obj.font:getWidth(obj.text)/sx)-1
-    local offsy=n*fh +obj.font:getLineHeight()*n*3
     lg.setFont(obj.font)
-    lg.printf(obj.text, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
+    local n=math.ceil(obj.font:getWidth(obj.text)*obj.scale.x/sx)
+    lg.printf(obj.text, px, py+(sy*0.5)-(n*fh*0.5*obj.scale.y)-obj.font:getLineHeight(),sx/obj.scale.x,obj.alignmode,0, obj.scale.x, obj.scale.y)
     lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
@@ -691,11 +703,10 @@ local function render_text_edit(canvas_id,obj)
         todisplay=text_to_render
     end
     --lg.printf(todisplay, px, py,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
-    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
-    local n=math.ceil(obj.font:getWidth(todisplay)/sx)-1
-    local offsy=n*fh +obj.font:getLineHeight()*n*3
     lg.setFont(obj.font)
-    lg.printf(todisplay, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,obj.rotation, obj.scale.x, obj.scale.y)
+    local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
+    local n=math.ceil(obj.font:getWidth(obj.text)*obj.scale.x/sx)
+    lg.printf(obj.text, px, py+(sy*0.5)-(n*fh*0.5*obj.scale.y)-obj.font:getLineHeight(),sx/obj.scale.x,obj.alignmode,0, obj.scale.x, obj.scale.y)
     lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
@@ -711,7 +722,7 @@ function dengui.new_text_button(canvas_id,text,position,size,func,scale,colour)
     ui_storage[canvas_id][ui_storage[canvas_id][0]+1]=gen
     ui_storage[canvas_id][0]=#ui_storage[canvas_id]
     --dengui.re_render_canvas(canvas_id)
-    return gen
+    return ui_storage[canvas_id][ui_storage[canvas_id][0]]
 end
 local function render_text_button(canvas_id,obj)
     local thiscan=canvases[canvas_id]
@@ -728,9 +739,9 @@ local function render_text_button(canvas_id,obj)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     lg.setFont(obj.font)
     local fh=obj.font:getAscent()-obj.font:getDescent()-obj.font:getLineHeight()
-    local n=math.ceil(obj.font:getWidth(obj.text)/sx)-1
-    local offsy=n*fh +obj.font:getLineHeight()*n*3
-    lg.printf(obj.text, px, py+(sy*0.5)-(fh*0.8565555*0.5)-offsy*0.5,sx,obj.alignmode,0, obj.scale.x, obj.scale.y)
+    local n=math.ceil(obj.font:getWidth(obj.text)*obj.scale.x/sx)
+    --print("debug",obj.text,obj.scale.x)
+    lg.printf(obj.text, px, py+(sy*0.5)-(n*fh*0.5*obj.scale.y)-obj.font:getLineHeight(),sx/obj.scale.x,obj.alignmode,0, obj.scale.x, obj.scale.y)
     lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
 end
@@ -820,7 +831,8 @@ local render_function_list={
 }
 function dengui.re_render_all()
     for i=1,canvases[0] do
-        dengui.re_render_canvas(i)
+        dengui.re_render_canvas(canvases[i].id)
+        --dengui.re_render_canvas(i)
     end
 end
 local last_gc=os.clock()
@@ -831,12 +843,13 @@ function dengui.re_render_canvas(canvas_id)
     --print("recanv",canvas_id,canvases[canvas_id].do_aspect,canvases[canvas_id].aspect_ratio)
     ---@diagnostic disable-next-line: param-type-mismatch
     local nuis,fromto_ui=qsort.dup(ui_storage[canvas_id])
-    ui_storage[canvas_id]=nuis
+    ui_storage_drawable[canvas_id]=nuis
     lg.setCanvas(canvases[canvas_id].canvas)
     lg.clear()
     for i=1,ui_storage[canvas_id][0] do
-        local obj=ui_storage[canvas_id][i]
+        local obj=ui_storage_drawable[canvas_id][i]
         render_function_list[obj.type](canvas_id,obj)
+        --print(canvas_id,#ui_storage_drawable[canvas_id],ui_storage_drawable[canvas_id][1].type,ui_storage_drawable[canvas_id][1].text)
     end
     --scrollcanv
     local canv= canvases[canvas_id]

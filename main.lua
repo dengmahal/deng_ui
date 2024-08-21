@@ -78,14 +78,14 @@ function love.load(arg,arg2)
     local edi=dengui.new_text_edit(maincanvas_data.id,"ye")
     edi.position={scale={x=0.5,y=0.5},offset={x=0,y=0}}
     edi.zindex=9
-    
     local newb=dengui.new_text_button(maincanvas_data.id,string.rep("000000",5))
     newb.anchor={x=0.5,y=0.5}
+    newb.scale={x=0.75,y=0.75}
     newb.colour={1,0,1,1}
     newb.size={scale={x=.1,y=.1},offset={x=0,y=0}}
     newb.position={scale={x=0.3,y=0.5},offset={x=0,y=0}}
     newb.zindex=6
-    newb.font=arfont
+    --newb.font=arfont
     newb["1_func"]=function ()
         print("yes")
     end
@@ -200,7 +200,7 @@ function love.draw(dt)
         my_images[i].rotation=my_image.rotation+math.rad(i*10)
     end
     dengui.re_render_canvas(scroll_canv_data.id)
-    dengui.re_render_canvas(maincanvas_data.id)
+    --dengui.re_render_canvas(maincanvas_data.id)
     dengui.draw()
     scroll_canv_data.scroll_y=scroll_canv_data.scroll_y+dt*0.5
     if scroll_canv_data.scroll_y>=scroll_canv_data.scroll_lenght then
