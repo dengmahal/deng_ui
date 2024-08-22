@@ -120,6 +120,7 @@ local defaults={
         colour={1,1,1,1},
         mode="fill",
         round=0,
+        width=3
     },
     boxr={
         type="boxr",
@@ -268,9 +269,9 @@ function dengui.set_render_screen_dims(sx_s,sy_s,px_s,py_s,r,do_aspect,aspect_ra
     local sy=screenY*sy_s
     if do_aspect==true then
         if sx/sy>= aspect_ratio then
-            sx=sy/aspect_ratio
+            sx=sy*aspect_ratio
         else
-            sy=sx*aspect_ratio
+            sy=sx/aspect_ratio
         end
     end
     local px=px_s*screenX -sx*0.5
@@ -309,12 +310,12 @@ function dengui.new_canvas(sx_s,sy_s,zindex,do_aspect,aspect_ratio,canvas_positi
     scroll_lenght=scroll_lenght or 3
     local canv_id=#canvases+1
     local sx=sx_s*screen_canv_p.size.x
-    local sy=sx_s*screen_canv_p.size.x
+    local sy=sy_s*screen_canv_p.size.y
     if do_aspect==true then
         if sx/sy>= aspect_ratio then
-            sx=sy/aspect_ratio
+            sx=sy*aspect_ratio
         else
-            sy=sx*aspect_ratio
+            sy=sx/aspect_ratio
         end
     end
     --local screenX,screenY=love.graphics.getWidth( ),love.graphics.getHeight( )
@@ -372,19 +373,21 @@ function dengui.set_size(canvas_id,x,y,scroll_lenght)
     if canvases[canvas_id] then
         local screenX,screenY=screen_canv_p.size.x,screen_canv_p.size.y
         local canv=canvases[canvas_id]
-        if canvases[canvas_id].do_aspect==true then
-            if (x*screenX)/(y*screenY)>= canvases[canvas_id].aspect_ratio then
-                x=((y*screenY)/canvases[canvas_id].aspect_ratio)/screenX
+        x=x*screen_canv_p.size.x
+        y=y*screen_canv_p.size.y
+        if canv.do_aspect==true then
+            if x/y>= canv.aspect_ratio then
+                x=(y*canv.aspect_ratio)
             else
-                y=((x*screenX)*canvases[canvas_id].aspect_ratio)/screenY
+                y=(x/canv.aspect_ratio)
             end
         end
         canv.canvas:release()
         --local screenX,screenY=love.graphics.getDimensions( )--love.graphics.getWidth( ),love.graphics.getHeight( )
         
-        canv.canvas=lg.newCanvas(x*screenX,y*screenY)
-        canv.x=x*screenX
-        canv.y=y*screenY
+        canv.canvas=lg.newCanvas(x,y)
+        canv.x=x
+        canv.y=y
         if canv.scrollable==true then
             canv.scroll_lenght=scroll_lenght or canv.scroll_lenght
         end
@@ -460,7 +463,7 @@ function dengui.new_img_asset(filename,storename,settings)
     else
         warn(filename.." was unable to load")
     end
-    return
+    return img:getPixelDimensions()
 end
 function dengui.release_img_asset(storename)
     if assets[storename] then
@@ -515,6 +518,7 @@ local function render_box(canvas_id,box)
     local px=box.position.scale.x*thiscan.x+box.position.offset.x   -sx*box.anchor.x
     local py=box.position.scale.y*thiscan.y+box.position.offset.y   -sy*box.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(box.colour[1],box.colour[2],box.colour[3],box.colour[4])
+    lg.setLineWidth(box.width)
     --print("rect",sx,sy,box.size.scale.x,box.size.scale.y)
     --print("rectcan",thiscan.x,thiscan.y)
     --print(px,py,sx,sy)
@@ -572,6 +576,7 @@ local function render_boxr(canvas_id,box)
     py4=py4-sco
     love.graphics.polygon(box.mode, px1,py1, px2,py2, px3,py3, px4,py4)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+    lg.setLineWidth(3)
 end
 
 function dengui.new_text(canvas_id,text,position,scale,colour)
@@ -660,6 +665,7 @@ local function render_textfb(canvas_id,obj)
     lg.printf(obj.text, px, py+(sy*0.5)-(n*fh*0.5*(obj.scale.y/font_scale))-obj.font:getLineHeight(),sx/(obj.scale.x/font_scale),obj.alignmode,0, obj.scale.x/font_scale, obj.scale.y/font_scale)
     lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+    lg.setLineWidth(3)
 end
 
 function dengui.new_text_edit(canvas_id,background_text,position,size,scale,colour)
@@ -676,7 +682,7 @@ function dengui.new_text_edit(canvas_id,background_text,position,size,scale,colo
     --dengui.re_render_canvas(canvas_id)
     return gen
 end
-local function render_text_edit(canvas_id,obj)
+local function render_text_edit(canvas_id,obj,obid)
     local thiscan=canvases[canvas_id]
     --local thisfont=lg.getFont()
     local sx=obj.size.scale.x*thiscan.x+obj.size.offset.x
@@ -685,7 +691,7 @@ local function render_text_edit(canvas_id,obj)
     local py=obj.position.scale.y*thiscan.y+obj.position.offset.y   -sy*obj.anchor.y    -thiscan.scroll_y*thiscan.y
     lg.setColor(obj.background_colour[1],obj.background_colour[2],obj.background_colour[3],obj.background_colour[4])
     local text_to_render=tostring(obj.text)
-    if current_text_editing[1]~=0 then
+    if current_text_editing[1]~=0 and current_text_editing[2]==obid then
         if cursor_state==true then
             --text_to_render=text_to_render.."|"--utf8.char(204)
             text_to_render=string_insert(text_to_render,"|",cursor_pos)
@@ -698,8 +704,8 @@ local function render_text_edit(canvas_id,obj)
     lg.rectangle("line", px+obj.border_width*.5, py+obj.border_width*.5, sx-obj.border_width, sy-obj.border_width,obj.round,obj.round)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     local todisplay=""
-    if (obj.text=="" or obj.text==nil) and current_text_editing[1]==0 then
-        todisplay=defaults.text_edit.background_text
+    if (obj.text=="" or obj.text==nil) and current_text_editing[2]~=obid then
+        todisplay=obj.background_text
     else
         todisplay=text_to_render
     end
@@ -710,6 +716,7 @@ local function render_text_edit(canvas_id,obj)
     lg.printf(todisplay, px, py+(sy*0.5)-(n*fh*0.5*(obj.scale.y/font_scale))-obj.font:getLineHeight(),sx/(obj.scale.x/font_scale),obj.alignmode,0, obj.scale.x/font_scale, obj.scale.y/font_scale)
     lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+    lg.setLineWidth(3)
 end
 function dengui.new_text_button(canvas_id,text,position,size,func,scale,colour)
     if type(canvas_id)~="number" then warn("invalid canvas_id "..debug.traceback()) end
@@ -744,6 +751,7 @@ local function render_text_button(canvas_id,obj)
     lg.printf(obj.text, px, py+(sy*0.5)-(n*fh*0.5*(obj.scale.y/font_scale))-obj.font:getLineHeight(),sx/(obj.scale.x/font_scale),obj.alignmode,0, obj.scale.x/font_scale, obj.scale.y/font_scale)
     lg.setFont(standart_font)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+    lg.setLineWidth(3)
 end
 
 function dengui.new_image(canvas_id,asset,position,scale,colour)
@@ -816,6 +824,7 @@ local function render_image_button(canvas_id,obj)
     lg.setColor(obj.colour[1],obj.colour[2],obj.colour[3],obj.colour[4])
     lg.draw(img, tpx, tpy,obj.rotation, ssx,ssy)
     lg.setColor(default_colour[1],default_colour[2],default_colour[3],default_colour[4])
+    lg.setLineWidth(3)
 end
 
 local render_function_list={
@@ -848,7 +857,7 @@ function dengui.re_render_canvas(canvas_id)
     lg.clear()
     for i=1,ui_storage[canvas_id][0] do
         local obj=ui_storage_drawable[canvas_id][i]
-        render_function_list[obj.type](canvas_id,obj)
+        render_function_list[obj.type](canvas_id,obj,fromto_ui[i])
         --print(canvas_id,#ui_storage_drawable[canvas_id],ui_storage_drawable[canvas_id][1].type,ui_storage_drawable[canvas_id][1].text)
     end
     
@@ -871,10 +880,11 @@ function dengui.re_render_canvas(canvas_id)
     end
     --
     if canv.draw_bounds==true then
-        lg.setColor(1,1,1,0.25)
-        lg.setLineWidth((canv.y)/25)
+        lg.setColor(1,1,1,0.5)
+        lg.setLineWidth((canv.y*0+75)/25)
         lg.rectangle("line",0,0,canv.x,canv.y)
         lg.setColor(1,1,1,1)
+        lg.setLineWidth(3)
     end
     lg.setCanvas()
     if os.clock()-last_gc>math.max(math.min((1/ui_storage[canvas_id][0])*600000,60),3) then
@@ -929,6 +939,11 @@ function dengui.keypressed(key)
     --print(key)
     if current_text_editing[1]~=0 then
         local sstring=ui_storage[current_text_editing[1]][current_text_editing[2]].text
+        if key=="v" and love.keyboard.isDown("lctrl") then
+            sstring=sstring..love.system.getClipboardText()
+            ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring
+            cursor_pos=#sstring
+        end
         if #key==1 and #sstring<ui_storage[current_text_editing[1]][current_text_editing[2]].limit then
         elseif key=="backspace" then
             if love.keyboard.isDown("lctrl") or love.keyboard.isDown("rctrl") then
@@ -985,7 +1000,6 @@ function dengui.keypressed(key)
             cursor_state=true
             cursor_timer=os.clock()
         elseif str_char_map[key] and #key>3 then
-            print(key)
             ui_storage[current_text_editing[1]][current_text_editing[2]].text=string_insert(sstring,str_char_map[key],cursor_pos)
             cursor_pos=cursor_pos+#str_char_map[key]
             --ui_storage[current_text_editing[1]][current_text_editing[2]].text=sstring..str_char_map[key]
@@ -1029,30 +1043,48 @@ function dengui.is_over_canvas(canvas_id,x,y)
         return false
     end
 end
-
+function dengui.is_over_abutton(x,y)
+    local did=false
+    for i=1,canvases[0] do
+        local canvchecking=canv_from_to[i]
+        local thiscan=canvases[canvchecking]
+        for ii=#ui_storage[canvchecking],1,-1 do
+            if ui_storage[canvchecking][ii].type=="text_edit" or ui_storage[canvchecking][ii].type=="text_button" or ui_storage[canvchecking][ii].type=="image_button" then
+                if dengui.is_over_ui(canvchecking,ii,x,y)==true then
+                    did=true
+                    goto end_is_over_abutton
+                end
+            end
+        end
+    end
+    ::end_is_over_abutton::
+    return did
+end
 
 function dengui.mousepressed(x, y, button, isTouch)
     local hit_text_eedit=false
     for i=1,canvases[0] do
         local canvchecking=canv_from_to[i]
         local thiscan=canvases[canvchecking]
-        for ii=#ui_storage[canvchecking],1,-1 do
-            if ui_storage[canvchecking][ii].type=="text_edit" then
-                if dengui.is_over_ui(canvchecking,ii,x,y)==true then
-                    current_text_editing={canvchecking,ii}
-                    hit_text_eedit=true
-                    cursor_pos=#ui_storage[canvchecking][ii].text
-                    break
-                end
-            elseif ui_storage[canvchecking][ii].type=="text_button" then
-                if dengui.is_over_ui(canvchecking,ii,x,y)==true then
-                    ui_storage[canvchecking][ii][button.."_func"](x,y)
-                    break
-                end
-            elseif ui_storage[canvchecking][ii].type=="image_button" then
-                if dengui.is_over_ui(canvchecking,ii,x,y)==true then
-                    ui_storage[canvchecking][ii][button.."_func"](x,y)
-                    break
+        if canvases[canvchecking].visible==true then
+            for ii=#ui_storage[canvchecking],1,-1 do
+                if ui_storage[canvchecking][ii].type=="text_edit" then
+                    if dengui.is_over_ui(canvchecking,ii,x,y)==true then
+                        current_text_editing={canvchecking,ii}
+                        hit_text_eedit=true
+                        cursor_pos=#ui_storage[canvchecking][ii].text
+                        break
+                    end
+                elseif ui_storage[canvchecking][ii].type=="text_button" then
+                    if dengui.is_over_ui(canvchecking,ii,x,y)==true then
+                        ui_storage[canvchecking][ii][button.."_func"](x,y)
+                        break
+                    end
+                elseif ui_storage[canvchecking][ii].type=="image_button" then
+                    if dengui.is_over_ui(canvchecking,ii,x,y)==true then
+                        ui_storage[canvchecking][ii][button.."_func"](x,y)
+                        break
+                    end
                 end
             end
         end
@@ -1064,6 +1096,9 @@ function dengui.mousepressed(x, y, button, isTouch)
             dengui.re_render_canvas(tmp)
         end
         current_text_editing={0,0}
+    else
+        cursor_state=true
+        dengui.re_render_canvas(current_text_editing[1])
     end
 end
 function dengui.mousereleased(x,y,button,isTouch)

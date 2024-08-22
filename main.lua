@@ -11,12 +11,12 @@ scroll_canv_data.scrollbar_colour={0,1,1,1}
 scroll_canv_data.scroll_lenght=10
 local maincanvas_data=dengui.new_canvas(1,1,10,true,1,{scale={x=0.5,y=0.5},offset={x=0,y=0}},{x=0.5,y=0.5})
 maincanvas_data.draw_bounds=true
-local tacho_data=dengui.new_canvas(0.25,0.25,400,true,0.5,{scale={x=0.5,y=0.95},offset={x=0,y=0}},{x=0.5,y=1})
+local tacho_data=dengui.new_canvas(0.25,0.25,400,true,2,{scale={x=0.5,y=0.95},offset={x=0,y=0}},{x=0.5,y=1})
 tacho_data.scrollable=false
 tacho_data.scroll_lenght=1
 tacho_data.scrollbar_colour={1,0,1,1}
 scroll_canv_data.draw_bounds=false
-local tacholine_data=dengui.new_canvas(0.25,0.25,1000,true,0.5,{scale={x=0.5,y=0.95},offset={x=0,y=0}},{x=0.5,y=1})
+local tacholine_data=dengui.new_canvas(0.25,0.25,1000,true,2,{scale={x=0.5,y=0.95},offset={x=0,y=0}},{x=0.5,y=1})
 local tachcent={x=0.5,y=0.9}
 local tach_line=dengui.new_boxr(tacholine_data.id,{scale={x=tachcent.x,y=tachcent.y},offset={x=0,y=0}},{scale={x=0.008,y=0.65},offset={x=0,y=0}})
 --tacholine_data.scrollable=true
