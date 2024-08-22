@@ -113,7 +113,7 @@ function love.load(arg,arg2)
             num.font=berlin
             num.alignmode="center"
             num.size={scale={x=5*font_scale.x,y=font_scale.y},offset={x=0,y=0}}
-            num.anchor={x=num.scale.x*0.5,y=num.scale.y*0.5}
+            num.anchor={x=0.5,y=0.5}
             print(i,num.size.scale.x,num.anchor.x)
             --print(i)
         end

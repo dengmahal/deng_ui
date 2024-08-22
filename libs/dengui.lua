@@ -279,7 +279,7 @@ function dengui.set_render_screen_dims(sx_s,sy_s,px_s,py_s,r,do_aspect,aspect_ra
     local offsetY=sx* math.sin(r) + sy * math.cos(r)
     local tpx=px-offsetX*0.5+sx*0.5
     local tpy=py-offsetY*0.5+sy*0.5
-    print(px,py,tpx,tpy)
+    --print(px,py,tpx,tpy)
     
     screen_canv_p.position.x=tpx
     screen_canv_p.position.y=tpy
@@ -343,8 +343,8 @@ function dengui.new_canvas(sx_s,sy_s,zindex,do_aspect,aspect_ratio,canvas_positi
     canvases[canv_id] = firstlayercopy(cano)
     canvases[0]=canv_id
     ui_storage[canv_id]={[0]=0}
-    local px=canvas_position.scale.x*screenX+canvas_position.offset.x   -sx*0.5
-    local py=canvas_position.scale.y*screenY+canvas_position.offset.y   -sy*0.5
+    local px=canvas_position.scale.x*screenX+canvas_position.offset.x   -sx*canvas_anchor.x+screen_canv_p.position.x
+    local py=canvas_position.scale.y*screenY+canvas_position.offset.y   -sy*canvas_anchor.y+screen_canv_p.position.y
     canvases[canv_id].truepos={x=px,y=py}
     --for i,v in pairs(canvases[canv_id])do
     --   print(i,v) 
@@ -370,7 +370,7 @@ function dengui.set_size(canvas_id,x,y,scroll_lenght)
     --reconstruct canvas here
     if canvases[canvas_id] then
         local screenX,screenY=screen_canv_p.size.x,screen_canv_p.size.y
-        local thiscanv=canvases[canvas_id]
+        local canv=canvases[canvas_id]
         if canvases[canvas_id].do_aspect==true then
             if (x*screenX)/(y*screenY)>= canvases[canvas_id].aspect_ratio then
                 x=((y*screenY)/canvases[canvas_id].aspect_ratio)/screenX
@@ -378,22 +378,21 @@ function dengui.set_size(canvas_id,x,y,scroll_lenght)
                 y=((x*screenX)*canvases[canvas_id].aspect_ratio)/screenY
             end
         end
-        thiscanv.canvas:release()
+        canv.canvas:release()
         --local screenX,screenY=love.graphics.getDimensions( )--love.graphics.getWidth( ),love.graphics.getHeight( )
         
-        thiscanv.canvas=lg.newCanvas(x*screenX,y*screenY)
-        thiscanv.x=x*screenX
-        thiscanv.y=y*screenY
-        --thiscanv.anchor={x=0.5,y=0.5}
-        if thiscanv.scrollable==true then
-            thiscanv.scroll_lenght=scroll_lenght or thiscanv.scroll_lenght
+        canv.canvas=lg.newCanvas(x*screenX,y*screenY)
+        canv.x=x*screenX
+        canv.y=y*screenY
+        if canv.scrollable==true then
+            canv.scroll_lenght=scroll_lenght or canv.scroll_lenght
         end
-        canvases_drawables[canv_from_to[canvas_id]].canvas=thiscanv.canvas
-        canvases_drawables[canv_from_to[canvas_id]].x=thiscanv.x
-        canvases_drawables[canv_from_to[canvas_id]].y=thiscanv.y
-        local px=thiscanv.position.scale.x*screenX+thiscanv.position.offset.x   -thiscanv.x*thiscanv.anchor.x +screen_canv_p.position.x
-        local py=thiscanv.position.scale.y*screenY+thiscanv.position.offset.y   -thiscanv.y*thiscanv.anchor.y +screen_canv_p.position.y
-        thiscanv.truepos={x=px,y=py}
+        canvases_drawables[canv_from_to[canvas_id]].canvas=canv.canvas
+        canvases_drawables[canv_from_to[canvas_id]].x=canv.x
+        canvases_drawables[canv_from_to[canvas_id]].y=canv.y
+        local px=canv.position.scale.x*screenX+canv.position.offset.x   -canv.x*canv.anchor.x +screen_canv_p.position.x
+        local py=canv.position.scale.y*screenY+canv.position.offset.y   -canv.y*canv.anchor.y +screen_canv_p.position.y
+        canv.truepos={x=px,y=py}
         --print(px,py,x,y,screenX,screenY)
     else
         warn("canvas_id '"..canvas_id.."' not found")
@@ -421,12 +420,13 @@ function dengui.draw()
     local screenX,screenY=screen_canv_p.size.x,screen_canv_p.size.y
     --print(love.graphics.getWidth( ),love.graphics.getHeight( ),screenX,screenY)
     for i=1,canvases[0] do
-
         local canv=canvases_drawables[i]--canvases[i]
         local sx=canv.x--*screen_canv_p.size.x
         local sy=canv.y--*screen_canv_p.size.y
         local px=canv.position.scale.x*screenX+canv.position.offset.x   -sx*canv.anchor.x +screen_canv_p.position.x
         local py=canv.position.scale.y*screenY+canv.position.offset.y   -sy*canv.anchor.y +screen_canv_p.position.y
+        --canv.truepos.x=px
+        --canv.truepos.y=py
         --print(px,py,sx,sy,canv.x)
         lg.setColor(1,1,1,1)
         if canv.visible==true then
@@ -455,7 +455,7 @@ function dengui.new_img_asset(filename,storename,settings)
     local img=lg.newImage(filename,settings)
     if img then
         assets[storename]=img
-        print(storename,filename)
+        --print(storename,filename)
     else
         warn(filename.." was unable to load")
     end
@@ -851,8 +851,12 @@ function dengui.re_render_canvas(canvas_id)
         render_function_list[obj.type](canvas_id,obj)
         --print(canvas_id,#ui_storage_drawable[canvas_id],ui_storage_drawable[canvas_id][1].type,ui_storage_drawable[canvas_id][1].text)
     end
+    
     --scrollcanv
     local canv= canvases[canvas_id]
+    local px=canv.position.scale.x*screenX+canv.position.offset.x   -canv.x*canv.anchor.x +screen_canv_p.position.x
+    local py=canv.position.scale.y*screenY+canv.position.offset.y   -canv.y*canv.anchor.y +screen_canv_p.position.y
+    canv.truepos={x=px,y=py}
     if canv.scrollable==true then
         --bar
         local sx=canv.scrollbar_width
